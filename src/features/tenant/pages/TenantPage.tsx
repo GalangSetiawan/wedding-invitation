@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { tenantApi } from '@/core/api/endpoints';
-import { DataTable } from '@/shared/components/DataTable';
+import { DataTable, Column } from '@/shared/components/DataTable';
 import { Modal } from '@/shared/components/Modal';
 import { PageLoader } from '@/shared/components/Loading';
 import type { Tenant, CreateTenantRequest, PlanType, TenantStatus } from '@/types';
@@ -99,7 +99,7 @@ export function TenantPage() {
         return <span className={`${classes[plan]} uppercase`}>{plan}</span>;
     };
 
-    const columns = [
+    const columns: Column<Tenant>[] = [
         {
             key: 'couple',
             header: 'Couple',
@@ -166,7 +166,7 @@ export function TenantPage() {
 
             <DataTable
                 columns={columns}
-                data={tenants as unknown as Record<string, unknown>[]}
+                data={tenants}
                 loading={loading}
                 emptyMessage="No tenants found"
             />

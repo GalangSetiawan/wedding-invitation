@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { giftApi } from '@/core/api/endpoints';
-import { DataTable } from '@/shared/components/DataTable';
+import { DataTable, Column } from '@/shared/components/DataTable';
 import { Modal } from '@/shared/components/Modal';
 import { PageLoader } from '@/shared/components/Loading';
 import type { Gift } from '@/types';
@@ -69,7 +69,7 @@ export function GiftsPage() {
         }
     };
 
-    const columns = [
+    const columns: Column<Gift>[] = [
         {
             key: 'guest_name',
             header: 'Guest',
@@ -134,7 +134,7 @@ export function GiftsPage() {
 
             <DataTable
                 columns={columns}
-                data={gifts as unknown as Record<string, unknown>[]}
+                data={gifts}
                 loading={loading}
                 emptyMessage="No gifts recorded yet"
             />
