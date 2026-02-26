@@ -24,13 +24,8 @@ export function GiftsPage() {
                 setGifts(response.data);
             }
         } catch {
-            setGifts([
-                { id: 'gf1', tenant_id: 't1', guest_name: 'Ahmad Rizki', amount: 500000, bank_name: 'BCA', created_at: '2026-02-20' },
-                { id: 'gf2', tenant_id: 't1', guest_name: 'Siti Nurhaliza', amount: 1000000, bank_name: 'Mandiri', created_at: '2026-02-21' },
-                { id: 'gf3', tenant_id: 't1', guest_name: 'Budi Santoso', amount: 750000, bank_name: 'BRI', created_at: '2026-02-22' },
-                { id: 'gf4', tenant_id: 't1', guest_name: 'Dewi Lestari', amount: 2000000, bank_name: 'BCA', created_at: '2026-02-23' },
-                { id: 'gf5', tenant_id: 't1', guest_name: 'Fajar Nugraha', amount: 300000, bank_name: 'BNI', created_at: '2026-02-24' },
-            ]);
+            toast.error('Failed to load gifts');
+            setGifts([]);
         } finally {
             setLoading(false);
         }

@@ -10,6 +10,7 @@ import { TenantPage } from '@/features/tenant/pages/TenantPage';
 import { WishesPage } from '@/features/wishes/pages/WishesPage';
 import { GiftsPage } from '@/features/gifts/pages/GiftsPage';
 import { ActivityPage } from '@/features/activity/pages/ActivityPage';
+import { InvitationPage } from '@/features/invitation/pages/InvitationPage';
 import { Navigate } from 'react-router-dom';
 
 function UnauthorizedPage() {
@@ -50,6 +51,10 @@ export const router = createHashRouter([
     {
         path: '/register',
         element: <RegisterPage />,
+    },
+    {
+        path: '/invitation/:slug',
+        element: <InvitationPage />,
     },
     {
         path: '/',
