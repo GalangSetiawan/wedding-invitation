@@ -202,12 +202,22 @@ export interface UpdateTenantRequest {
 // Invitation Content
 // =============================================
 
+export interface TimelineItem {
+    tanggal: string;
+    judul: string;
+    deskripsi: string;
+}
+
 export interface InvitationContent {
     id: string;
     tenant_id: string;
     flag_lokasi_akad_dan_resepsi_berbeda: boolean | string;
     akad_map: string;
+    nama_lokasi_akad: string;
+    keterangan_lokasi_akad: string;
     resepsi_map: string;
+    nama_lokasi_resepsi: string;
+    keterangan_lokasi_resepsi: string;
     flag_tampilkan_nama_orang_tua: boolean | string;
     nama_bapak_laki_laki: string;
     nama_ibu_laki_laki: string;
@@ -229,5 +239,10 @@ export interface InvitationContent {
     custom_kalimat_2: string;
     custom_kalimat_3: string;
     custom_kalimat_4: string;
+    flag_pakai_kalimat_pembuka_custom: boolean | string;
+    kalimat_pembuka_undangan: string;
+    flag_pakai_kalimat_penutup_custom: boolean | string;
+    kalimat_penutup_undangan: string;
+    link_backsound_music: string;
 }
 

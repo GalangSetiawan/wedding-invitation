@@ -21,44 +21,52 @@ export function LoginPage() {
             return;
         }
 
+        // --- BACKDOOR SUPERADMIN LOGIN FOR DEVELOPMENT ---
+        if (username === 'superadmin' && password === 'admin123') {
+            const fakeSuperAdminUser = {
+                id: 'super-123',
+                username: 'superadmin',
+                role: 'superadmin' as const,
+                tenant_id: 'system',
+                created_at: new Date().toISOString()
+            };
+            const mockTenant = {
+                id: 'system',
+                domain_slug: 'system',
+                bride_name: 'System',
+                groom_name: 'Admin',
+                wedding_date: new Date().toISOString(),
+                status: 'active' as const,
+                package: 'premium' as const,
+                plan_type: 'premium' as const,
+                guest_limit: 1000,
+                created_at: new Date().toISOString()
+            };
+            setAuth('dummy-superadmin-token', fakeSuperAdminUser, mockTenant);
+            toast.success('Welcome back, Super Admin! 👑');
+            navigate('/global-dashboard');
+            return;
+        }
+        // ------------------------------------------------
+
         setLoading(true);
         try {
-            // ======== DEMO / DEVELOPMENT MOCK ========
-            if (username === 'galang' && password === 'galang') {
-                setTimeout(() => {
-                    const mockUser = { id: 'user-galang', username: 'galang', role: 'tenant_admin' as const, tenant_id: 'tenant-galang', created_at: new Date().toISOString() };
-                    const mockTenant = { id: 'tenant-galang', bride_name: 'Galang', groom_name: 'Partner', wedding_date: '2026-12-31', domain_slug: 'galang-wedding', plan_type: 'premium' as const, guest_limit: -1, created_at: new Date().toISOString(), status: 'active' as const };
-                    setAuth('mock-token-galang', mockUser, mockTenant);
-                    toast.success('Welcome back, Galang! 🎉');
-                    navigate('/dashboard');
-                }, 1000);
-                return;
-            }
-            if (username === 'admin' && password === 'admin123') {
-                setTimeout(() => {
-                    const mockUser = { id: 'sys-admin', username: 'admin', role: 'superadmin' as const, tenant_id: 'system', created_at: new Date().toISOString() };
-                    setAuth('mock-token-admin', mockUser, null);
-                    toast.success('Welcome Super Admin! 🎉');
-                    navigate('/global-dashboard');
-                }, 1000);
-                return;
-            }
-            // ==========================================
-
             const response = await authApi.login({ username, password });
             if (response.success) {
                 setAuth(response.data.token, response.data.user, response.data.tenant);
                 toast.success('Welcome back! 🎉');
-                navigate('/dashboard');
+                if (response.data.user.role === 'superadmin') {
+                    navigate('/global-dashboard');
+                } else {
+                    navigate('/dashboard');
+                }
             } else {
                 toast.error(response.message || 'Login failed');
             }
         } catch (error: unknown) {
             toast.error('Login failed (Check if backend API URL is configured in .env)');
         } finally {
-            if (username !== 'galang' && username !== 'admin') {
-                setLoading(false);
-            }
+            setLoading(false);
         }
     };
 
