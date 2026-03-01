@@ -15,6 +15,7 @@ import {
     HiOutlineSun,
     HiOutlineOfficeBuilding,
     HiOutlineChartBar,
+    HiOutlineDocumentText,
 } from 'react-icons/hi';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
 
@@ -40,6 +41,7 @@ export function DashboardLayout() {
             ? [{ to: '/global-dashboard', icon: HiOutlineChartBar, label: 'Global Stats', roles: ['superadmin'] }]
             : []),
         { to: '/guests', icon: HiOutlineUsers, label: 'Guests', roles: ['superadmin', 'tenant_admin', 'staff'] },
+        { to: '/invitation-content', icon: HiOutlineDocumentText, label: 'Content Settings', roles: ['superadmin', 'tenant_admin'] },
         { to: '/wishes', icon: HiOutlineHeart, label: 'Wishes', roles: ['superadmin', 'tenant_admin'] },
         { to: '/gifts', icon: HiOutlineGift, label: 'Gifts', roles: ['superadmin', 'tenant_admin'] },
         { to: '/activity', icon: HiOutlineClipboardList, label: 'Activity Log', roles: ['superadmin', 'tenant_admin'] },

@@ -23,6 +23,28 @@ export function LoginPage() {
 
         setLoading(true);
         try {
+            // ======== DEMO / DEVELOPMENT MOCK ========
+            if (username === 'galang' && password === 'galang') {
+                setTimeout(() => {
+                    const mockUser = { id: 'user-galang', username: 'galang', role: 'tenant_admin' as const, tenant_id: 'tenant-galang', created_at: new Date().toISOString() };
+                    const mockTenant = { id: 'tenant-galang', bride_name: 'Galang', groom_name: 'Partner', wedding_date: '2026-12-31', domain_slug: 'galang-wedding', plan_type: 'premium' as const, guest_limit: -1, created_at: new Date().toISOString(), status: 'active' as const };
+                    setAuth('mock-token-galang', mockUser, mockTenant);
+                    toast.success('Welcome back, Galang! 🎉');
+                    navigate('/dashboard');
+                }, 1000);
+                return;
+            }
+            if (username === 'admin' && password === 'admin123') {
+                setTimeout(() => {
+                    const mockUser = { id: 'sys-admin', username: 'admin', role: 'superadmin' as const, tenant_id: 'system', created_at: new Date().toISOString() };
+                    setAuth('mock-token-admin', mockUser, null);
+                    toast.success('Welcome Super Admin! 🎉');
+                    navigate('/global-dashboard');
+                }, 1000);
+                return;
+            }
+            // ==========================================
+
             const response = await authApi.login({ username, password });
             if (response.success) {
                 setAuth(response.data.token, response.data.user, response.data.tenant);
@@ -32,9 +54,11 @@ export function LoginPage() {
                 toast.error(response.message || 'Login failed');
             }
         } catch (error: unknown) {
-            toast.error('Login failed. Please check your credentials.');
+            toast.error('Login failed (Check if backend API URL is configured in .env)');
         } finally {
-            setLoading(false);
+            if (username !== 'galang' && username !== 'admin') {
+                setLoading(false);
+            }
         }
     };
 
@@ -147,7 +171,7 @@ export function LoginPage() {
 
                     <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
                         <p className="text-xs text-center text-gray-400">
-                            Demo credentials: <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">admin / admin123</span>
+                            Demo credentials: <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">galang / galang</span> or <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">admin / admin123</span>
                         </p>
                     </div>
                 </div>

@@ -148,6 +148,14 @@ function routeAction(action, payload, auth) {
     case 'getActivityLogs':
       return ActivityLogService.getLogs(auth);
 
+    // Invitation Content
+    case 'getInvitationContent':
+      PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
+      return InvitationContentService.getContent(auth);
+    case 'updateInvitationContent':
+      PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
+      return InvitationContentService.updateContent(auth, payload);
+
     // Public Invitation
     case 'getPublicInvitation':
       return PublicService.getInvitation(payload);
@@ -1020,6 +1028,51 @@ var ActivityLogService = {
 
 
 // =====================================================================
+// INVITATION CONTENT SERVICE
+// =====================================================================
+
+var InvitationContentService = {
+  getContent: function(auth) {
+    var tenantId = PermissionService.getTenantId(auth);
+    var content = DB.findOne('InvitationContent', 'tenant_id', tenantId);
+    
+    // If not found, return empty object so frontend can show empty form
+    if (!content) {
+      return ResponseHelper.success(null, 'No content found');
+    }
+    
+    return ResponseHelper.success(content, 'Invitation content retrieved');
+  },
+
+  updateContent: function(auth, payload) {
+    var tenantId = PermissionService.getTenantId(auth);
+    var sanitized = Validator.sanitizeObject(payload);
+    
+    // Ensure we don't accidentally update id and tenant_id
+    delete sanitized.id;
+    delete sanitized.tenant_id;
+
+    var existing = DB.findOne('InvitationContent', 'tenant_id', tenantId);
+    
+    if (existing) {
+      // Update
+      DB.update('InvitationContent', existing.id, sanitized);
+      var updated = DB.findOne('InvitationContent', 'id', existing.id);
+      ActivityLogService.log(tenantId, auth.user_id, 'update_invitation_content');
+      return ResponseHelper.success(updated, 'Content updated successfully');
+    } else {
+      // Insert
+      sanitized.id = DB.generateId();
+      sanitized.tenant_id = tenantId;
+      var inserted = DB.insert('InvitationContent', sanitized);
+      ActivityLogService.log(tenantId, auth.user_id, 'create_invitation_content');
+      return ResponseHelper.success(inserted, 'Content created successfully');
+    }
+  }
+};
+
+
+// =====================================================================
 // PUBLIC SERVICE - No auth required
 // =====================================================================
 
@@ -1115,7 +1168,16 @@ function setupSpreadsheet() {
     'Guests': ['id', 'tenant_id', 'name', 'phone', 'category', 'invitation_code', 'status', 'number_of_guests', 'checkin_status', 'created_at'],
     'Wishes': ['id', 'tenant_id', 'guest_name', 'message', 'created_at'],
     'Gifts': ['id', 'tenant_id', 'guest_name', 'amount', 'bank_name', 'created_at'],
-    'ActivityLogs': ['id', 'tenant_id', 'user_id', 'action', 'created_at']
+    'ActivityLogs': ['id', 'tenant_id', 'user_id', 'action', 'created_at'],
+    'InvitationContent': [
+      'id', 'tenant_id', 'flag_lokasi_akad_dan_resepsi_berbeda', 'akad_map', 'resepsi_map',
+      'flag_tampilkan_nama_orang_tua', 'nama_bapak_laki_laki', 'nama_ibu_laki_laki', 'nama_bapak_perempuan', 'nama_ibu_perempuan',
+      'flag_tampilkan_sosial_media_mempelai', 'account_media_sosial_laki_laki', 'account_media_sosial_perempuan',
+      'flag_pakai_timeline_kisah', 'timeline_kisah', 'tampilkan_amplop_online',
+      'nama_bank_1', 'nama_rekening_bank_1', 'nomor_rekening_bank_1',
+      'nama_bank_2', 'nama_rekening_bank_2', 'nomor_rekening_bank_2',
+      'custom_kalimat_1', 'custom_kalimat_2', 'custom_kalimat_3', 'custom_kalimat_4'
+    ]
   };
 
   for (var name in sheets) {

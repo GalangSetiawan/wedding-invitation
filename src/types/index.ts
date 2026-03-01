@@ -197,3 +197,37 @@ export interface UpdateTenantRequest {
     guest_limit?: number;
     status?: TenantStatus;
 }
+
+// =============================================
+// Invitation Content
+// =============================================
+
+export interface InvitationContent {
+    id: string;
+    tenant_id: string;
+    flag_lokasi_akad_dan_resepsi_berbeda: boolean | string;
+    akad_map: string;
+    resepsi_map: string;
+    flag_tampilkan_nama_orang_tua: boolean | string;
+    nama_bapak_laki_laki: string;
+    nama_ibu_laki_laki: string;
+    nama_bapak_perempuan: string;
+    nama_ibu_perempuan: string;
+    flag_tampilkan_sosial_media_mempelai: boolean | string;
+    account_media_sosial_laki_laki: string;
+    account_media_sosial_perempuan: string;
+    flag_pakai_timeline_kisah: boolean | string;
+    timeline_kisah: string;
+    tampilkan_amplop_online: boolean | string;
+    nama_bank_1: string;
+    nama_rekening_bank_1: string;
+    nomor_rekening_bank_1: string;
+    nama_bank_2: string;
+    nama_rekening_bank_2: string;
+    nomor_rekening_bank_2: string;
+    custom_kalimat_1: string;
+    custom_kalimat_2: string;
+    custom_kalimat_3: string;
+    custom_kalimat_4: string;
+}
+
