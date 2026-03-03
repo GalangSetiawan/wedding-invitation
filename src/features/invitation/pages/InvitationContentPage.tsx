@@ -63,12 +63,26 @@ export function InvitationContentPage() {
     const fetchContent = async () => {
         try {
             const response = await invitationContentApi.getContent();
+            const defaultOpeningText = "Kepada Yth\nBapak/Ibu/Saudara/i :";
+
             if (response.success && response.data) {
-                setContent(response.data);
-                parseTimeline(response.data.timeline_kisah);
+                // Ensure default opening text is applied if no custom text is set
+                const currentData = { ...response.data };
+                if (!getBool(currentData.flag_pakai_kalimat_pembuka_custom) && !currentData.kalimat_pembuka_undangan) {
+                    currentData.kalimat_pembuka_undangan = defaultOpeningText;
+                }
+
+                // Pre-fill tenant data if not yet set in invitation content
+                if (!currentData.tanggal_akad && tenant?.wedding_date) {
+                    currentData.tanggal_akad = tenant.wedding_date;
+                }
+
+                setContent(currentData);
+                parseTimeline(currentData.timeline_kisah);
             } else {
                 // Initialize with default empty values if backend returns null
                 setContent({
+                    tanggal_akad: tenant?.wedding_date || '', // Prefill from tenant
                     flag_lokasi_akad_dan_resepsi_berbeda: false,
                     akad_map: '',
                     nama_lokasi_akad: '',
@@ -98,7 +112,7 @@ export function InvitationContentPage() {
                     custom_kalimat_3: '',
                     custom_kalimat_4: '',
                     flag_pakai_kalimat_pembuka_custom: false,
-                    kalimat_pembuka_undangan: '',
+                    kalimat_pembuka_undangan: defaultOpeningText, // Set default
                     flag_pakai_kalimat_penutup_custom: false,
                     kalimat_penutup_undangan: '',
                     link_backsound_music: '',
