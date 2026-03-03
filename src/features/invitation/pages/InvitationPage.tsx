@@ -227,6 +227,11 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         return `${days} hari lalu`;
     };
 
+    const getBool = (val: any) => {
+        if (typeof val === 'boolean') return val;
+        return val === 'true' || val === '1';
+    };
+
     // LOADING
     if (loading) {
         return (
@@ -254,12 +259,17 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             <div className="inv-page inv-cover">
                 <div className="inv-cover-overlay" />
                 <div className="inv-cover-content">
+                    {getBool(activeContent.flag_pakai_kalimat_pembuka_custom) && activeContent.kalimat_pembuka_undangan && (
+                        <p className="inv-cover-opening text-sm italic font-serif text-white/90 mb-6 max-w-sm mx-auto text-center leading-relaxed">
+                            {activeContent.kalimat_pembuka_undangan}
+                        </p>
+                    )}
                     <p className="inv-cover-label">The Wedding Of</p>
                     <h1 className="inv-cover-names">
                         {tenant.groom_name} <span>&</span> {tenant.bride_name}
                     </h1>
                     <p className="inv-cover-date">{formatDate(tenant.wedding_date)}</p>
-                    <button className="inv-cover-btn" onClick={() => { setIsOpened(true); setIsPlaying(true); }}>
+                    <button className="inv-cover-btn mt-6" onClick={() => { setIsOpened(true); setIsPlaying(true); }}>
                         <span>💌</span> Buka Undangan
                     </button>
                 </div>
@@ -278,7 +288,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                 <div className="inv-hero-bg" />
                 <div className="inv-hero-content inv-animate">
                     <p className="inv-hero-bismillah">
-                        <span dir="rtl">{activeContent.flag_pakai_kalimat_pembuka_custom ? activeContent.kalimat_pembuka_undangan : 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ'}</span>
+                        <span dir="rtl">{getBool(activeContent.flag_pakai_kalimat_pembuka_custom) ? activeContent.kalimat_pembuka_undangan : 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ'}</span>
                     </p>
                     <p className="inv-hero-label">{activeContent.custom_kalimat_1 || 'We are getting married'}</p>
                     <h1 className="inv-hero-names">
@@ -305,12 +315,12 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                             <div className="inv-couple-avatar">🤵</div>
                             <h3>{tenant.groom_name}</h3>
                             <p>Mempelai Pria</p>
-                            {activeContent.flag_tampilkan_nama_orang_tua && (
+                            {getBool(activeContent.flag_tampilkan_nama_orang_tua) && (
                                 <p className="text-xs text-gray-500 mt-2">
                                     Putra dari Bpk. {activeContent.nama_bapak_laki_laki} & Ibu {activeContent.nama_ibu_laki_laki}
                                 </p>
                             )}
-                            {activeContent.flag_tampilkan_sosial_media_mempelai && activeContent.account_media_sosial_laki_laki && (
+                            {getBool(activeContent.flag_tampilkan_sosial_media_mempelai) && activeContent.account_media_sosial_laki_laki && (
                                 <a href={`https://instagram.com/${activeContent.account_media_sosial_laki_laki.replace('@', '')}`} target="_blank" rel="noreferrer" className="text-xs text-gold-600 hover:text-gold-700 mt-2 inline-block">
                                     {activeContent.account_media_sosial_laki_laki}
                                 </a>
@@ -323,12 +333,12 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                             <div className="inv-couple-avatar">👰</div>
                             <h3>{tenant.bride_name}</h3>
                             <p>Mempelai Wanita</p>
-                            {activeContent.flag_tampilkan_nama_orang_tua && (
+                            {getBool(activeContent.flag_tampilkan_nama_orang_tua) && (
                                 <p className="text-xs text-gray-500 mt-2">
                                     Putri dari Bpk. {activeContent.nama_bapak_perempuan} & Ibu {activeContent.nama_ibu_perempuan}
                                 </p>
                             )}
-                            {activeContent.flag_tampilkan_sosial_media_mempelai && activeContent.account_media_sosial_perempuan && (
+                            {getBool(activeContent.flag_tampilkan_sosial_media_mempelai) && activeContent.account_media_sosial_perempuan && (
                                 <a href={`https://instagram.com/${activeContent.account_media_sosial_perempuan.replace('@', '')}`} target="_blank" rel="noreferrer" className="text-xs text-gold-600 hover:text-gold-700 mt-2 inline-block">
                                     {activeContent.account_media_sosial_perempuan}
                                 </a>
@@ -339,7 +349,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             </section>
 
             {/* TIMELINE KISAH (If Enabled) */}
-            {activeContent.flag_pakai_timeline_kisah && timeline.length > 0 && (
+            {getBool(activeContent.flag_pakai_timeline_kisah) && timeline.length > 0 && (
                 <section className="inv-section inv-story" ref={(el) => { sectionsRef.current[2] = el; }}>
                     <div className="inv-section-inner inv-animate">
                         <p className="inv-section-subtitle">Love Story</p>
@@ -394,8 +404,10 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                         <div className="inv-event-card">
                             <div className="inv-event-icon">🕌</div>
                             <h3>Akad Nikah</h3>
-                            <p className="inv-event-date">{formatDate(tenant.wedding_date)}</p>
-                            <p className="inv-event-time">08:00 - 10:00 WIB</p>
+                            <p className="inv-event-date">{activeContent.tanggal_akad ? formatDate(activeContent.tanggal_akad) : formatDate(tenant.wedding_date)}</p>
+                            <p className="inv-event-time">
+                                {activeContent.jam_awal_akad || '08:00'} - {activeContent.jam_akhir_akad || '10:00'} WIB
+                            </p>
                             <p className="inv-event-location font-semibold">{activeContent.nama_lokasi_akad || 'Masjid Al-Ikhlas'}</p>
                             <p className="text-sm text-gray-500 mt-2">{activeContent.keterangan_lokasi_akad}</p>
                             {activeContent.akad_map && (
@@ -404,12 +416,14 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                                 </a>
                             )}
                         </div>
-                        {activeContent.flag_lokasi_akad_dan_resepsi_berbeda ? (
+                        {getBool(activeContent.flag_lokasi_akad_dan_resepsi_berbeda) ? (
                             <div className="inv-event-card">
                                 <div className="inv-event-icon">🎉</div>
                                 <h3>Resepsi</h3>
                                 <p className="inv-event-date">{formatDate(tenant.wedding_date)}</p>
-                                <p className="inv-event-time">11:00 - 14:00 WIB</p>
+                                <p className="inv-event-time">
+                                    {activeContent.jam_awal_resepsi || '11:00'} - {activeContent.jam_akhir_resepsi || '14:00'} WIB
+                                </p>
                                 <p className="inv-event-location font-semibold">{activeContent.nama_lokasi_resepsi || 'Gedung Serbaguna'}</p>
                                 <p className="text-sm text-gray-500 mt-2">{activeContent.keterangan_lokasi_resepsi}</p>
                                 {activeContent.resepsi_map && (
@@ -423,7 +437,9 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                                 <div className="inv-event-icon">🎉</div>
                                 <h3>Resepsi</h3>
                                 <p className="inv-event-date">{formatDate(tenant.wedding_date)}</p>
-                                <p className="inv-event-time">11:00 - 14:00 WIB</p>
+                                <p className="inv-event-time">
+                                    {activeContent.jam_awal_resepsi || '11:00'} - {activeContent.jam_akhir_resepsi || '14:00'} WIB
+                                </p>
                                 <p className="inv-event-location font-semibold">{activeContent.nama_lokasi_akad || 'Lokasi Sama Dengan Akad'}</p>
                                 <p className="text-sm text-gray-500 mt-2">{activeContent.keterangan_lokasi_akad}</p>
                             </div>

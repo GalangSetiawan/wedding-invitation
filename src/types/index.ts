@@ -30,7 +30,9 @@ export interface Tenant {
     plan_type: PlanType;
     guest_limit: number;
     created_at: string;
-    status: TenantStatus;
+    status_account: TenantStatus;
+    payment_deadline: string;
+    status_payment: 'Menunggu pembayaran' | 'Sudah dibayar';
 }
 
 export interface User {
@@ -195,7 +197,8 @@ export interface UpdateTenantRequest {
     id: string;
     plan_type?: PlanType;
     guest_limit?: number;
-    status?: TenantStatus;
+    status_account?: TenantStatus;
+    status_payment?: 'Menunggu pembayaran' | 'Sudah dibayar';
 }
 
 // =============================================
@@ -211,6 +214,18 @@ export interface TimelineItem {
 export interface InvitationContent {
     id: string;
     tenant_id: string;
+
+    // Tenant info injected from Backend
+    bride_name?: string;
+    groom_name?: string;
+    wedding_date?: string;
+    tanggal_akad?: string;
+
+    jam_awal_akad?: string;
+    jam_akhir_akad?: string;
+    jam_awal_resepsi?: string;
+    jam_akhir_resepsi?: string;
+
     flag_lokasi_akad_dan_resepsi_berbeda: boolean | string;
     akad_map: string;
     nama_lokasi_akad: string;

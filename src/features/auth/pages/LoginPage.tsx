@@ -36,11 +36,13 @@ export function LoginPage() {
                 bride_name: 'System',
                 groom_name: 'Admin',
                 wedding_date: new Date().toISOString(),
-                status: 'active' as const,
+                status_account: 'active' as const,
                 package: 'premium' as const,
                 plan_type: 'premium' as const,
                 guest_limit: 1000,
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
+                payment_deadline: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                status_payment: 'Sudah dibayar' as const
             };
             setAuth('dummy-superadmin-token', fakeSuperAdminUser, mockTenant);
             toast.success('Welcome back, Super Admin! 👑');

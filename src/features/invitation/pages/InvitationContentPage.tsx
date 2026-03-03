@@ -18,17 +18,47 @@ import {
 } from 'react-icons/hi';
 import type { TimelineItem } from '@/types';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { MapPickerModal } from '../components/MapPickerModal';
 
 export function InvitationContentPage() {
     const [content, setContent] = useState<Partial<InvitationContent> | null>(null);
-    const [timelineItems, setTimelineItems] = useState<TimelineItem[]>([]);
+    const [timelineItems, setTimelineItems] = useState<{ tanggal: string; judul: string; deskripsi: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const { tenant } = useAuthStore();
+    const [activeTab, setActiveTab] = useState<'mempelai' | 'acara' | 'cerita' | 'hadiah'>('mempelai');
+    const [iframeKey, setIframeKey] = useState(0);
+
+    // Map Picker State
+    const [showMapModal, setShowMapModal] = useState(false);
+    const [mapTarget, setMapTarget] = useState<'akad' | 'resepsi' | null>(null);
 
     useEffect(() => {
         fetchContent();
     }, []);
+
+    const handleMapConfirm = (data: { placeName: string; address: string; mapsUrl: string }) => {
+        if (!mapTarget || !content) return;
+
+        setContent(prev => {
+            if (!prev) return prev;
+            if (mapTarget === 'akad') {
+                return {
+                    ...prev,
+                    nama_lokasi_akad: data.placeName,
+                    keterangan_lokasi_akad: data.address,
+                    akad_map: data.mapsUrl
+                };
+            } else {
+                return {
+                    ...prev,
+                    nama_lokasi_resepsi: data.placeName,
+                    keterangan_lokasi_resepsi: data.address,
+                    resepsi_map: data.mapsUrl
+                };
+            }
+        });
+    };
 
     const fetchContent = async () => {
         try {
@@ -105,6 +135,7 @@ export function InvitationContentPage() {
             if (response.success) {
                 toast.success('Settings saved successfully');
                 setContent(response.data);
+                setIframeKey(prev => prev + 1); // Force iframe reload
             } else {
                 toast.error('Failed to save settings');
             }
@@ -118,8 +149,6 @@ export function InvitationContentPage() {
     const updateField = (field: keyof InvitationContent, value: any) => {
         setContent(prev => prev ? { ...prev, [field]: value } : null);
     };
-
-    const [activeTab, setActiveTab] = useState('mempelai');
 
     // Safe boolean parsing since DB might return 'TRUE' or boolean true
     const getBool = (val: any) => String(val).toLowerCase() === 'true';
@@ -178,7 +207,7 @@ export function InvitationContentPage() {
                             {tabs.map(tab => (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
+                                    onClick={() => setActiveTab(tab.id as 'mempelai' | 'acara' | 'cerita' | 'hadiah')}
                                     className={`flex items-center gap-2 px-5 py-3 text-sm font-medium rounded-t-xl transition-all duration-200 mb-[-1px] ${activeTab === tab.id
                                         ? 'text-gold-600 bg-white dark:bg-gray-900 border-t border-l border-r border-gray-200 dark:border-gray-800 shadow-[0_-2px_6px_rgba(0,0,0,0.02)]'
                                         : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 border-t border-l border-r border-transparent'
@@ -319,8 +348,19 @@ export function InvitationContentPage() {
                                                 <input type="text" value={content.nama_lokasi_akad || ''} onChange={(e) => updateField('nama_lokasi_akad', e.target.value)} className="input-field" placeholder="Masjid Raya / Hotel Grand..." />
                                             </div>
                                             <div>
-                                                <label className="label-field">Google Maps Link</label>
-                                                <input type="text" value={content.akad_map || ''} onChange={(e) => updateField('akad_map', e.target.value)} className="input-field" placeholder="https://maps.app.goo.gl/..." />
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <label className="label-field mb-0">Link Google Maps</label>
+                                                    <button
+                                                        onClick={() => {
+                                                            setMapTarget('akad');
+                                                            setShowMapModal(true);
+                                                        }}
+                                                        className="text-xs flex items-center gap-1 text-gold-600 hover:text-gold-700 font-medium bg-gold-50 px-2.5 py-1 rounded-md transition-colors"
+                                                    >
+                                                        <HiOutlineMap className="w-3.5 h-3.5" /> Pilih dari Peta
+                                                    </button>
+                                                </div>
+                                                <input type="url" value={content.akad_map || ''} onChange={(e) => updateField('akad_map', e.target.value)} className="input-field" placeholder="https://maps.app.goo.gl/..." />
                                             </div>
                                             <div>
                                                 <label className="label-field">Address & Info</label>
@@ -336,8 +376,19 @@ export function InvitationContentPage() {
                                                     <input type="text" value={content.nama_lokasi_resepsi || ''} onChange={(e) => updateField('nama_lokasi_resepsi', e.target.value)} className="input-field" placeholder="Hotel Mulia..." />
                                                 </div>
                                                 <div>
-                                                    <label className="label-field">Google Maps Link</label>
-                                                    <input type="text" value={content.resepsi_map || ''} onChange={(e) => updateField('resepsi_map', e.target.value)} className="input-field" placeholder="https://maps.app.goo.gl/..." />
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <label className="label-field mb-0">Link Google Maps</label>
+                                                        <button
+                                                            onClick={() => {
+                                                                setMapTarget('resepsi');
+                                                                setShowMapModal(true);
+                                                            }}
+                                                            className="text-xs flex items-center gap-1 text-gold-600 hover:text-gold-700 font-medium bg-gold-50 px-2.5 py-1 rounded-md transition-colors"
+                                                        >
+                                                            <HiOutlineMap className="w-3.5 h-3.5" /> Pilih dari Peta
+                                                        </button>
+                                                    </div>
+                                                    <input type="url" value={content.resepsi_map || ''} onChange={(e) => updateField('resepsi_map', e.target.value)} className="input-field" placeholder="https://maps.app.goo.gl/..." />
                                                 </div>
                                                 <div>
                                                     <label className="label-field">Address & Info</label>
@@ -617,6 +668,7 @@ export function InvitationContentPage() {
                             {/* Iframe pointing to the real public invitation URL */}
                             {tenant?.domain_slug ? (
                                 <iframe
+                                    key={iframeKey}
                                     src={`${window.location.origin}${window.location.pathname}#/invitation/${tenant.domain_slug}`}
                                     className="w-full h-full border-none pointer-events-auto"
                                     title="Invitation Preview"
@@ -630,6 +682,14 @@ export function InvitationContentPage() {
                     </div>
                 </div>
             </div>
+
+            {/* MODALS */}
+            <MapPickerModal
+                isOpen={showMapModal}
+                onClose={() => setShowMapModal(false)}
+                onConfirm={handleMapConfirm}
+            />
+
         </div>
     );
 }
