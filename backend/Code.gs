@@ -270,7 +270,22 @@ var DB = {
     for (var i = 1; i < data.length; i++) {
       var row = {};
       for (var j = 0; j < headers.length; j++) {
-        row[headers[j]] = data[i][j];
+        var val = data[i][j];
+        // Convert Date objects to proper strings to prevent JSON serialization issues
+        if (val instanceof Date) {
+          var year = val.getFullYear();
+          // Time-only values in Sheets use epoch year 1899
+          if (year === 1899) {
+            // Format as HH:mm for time fields
+            var hh = ('0' + val.getHours()).slice(-2);
+            var mm = ('0' + val.getMinutes()).slice(-2);
+            val = hh + ':' + mm;
+          } else {
+            // Format as YYYY-MM-DD for date fields
+            val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+          }
+        }
+        row[headers[j]] = val;
       }
       rows.push(row);
     }
@@ -1064,7 +1079,10 @@ var InvitationContentService = {
       content.bride_name = tenant.bride_name;
       content.groom_name = tenant.groom_name;
       content.wedding_date = tenant.wedding_date;
-      content.tanggal_akad = tenant.wedding_date; // Keep consistent view
+      // Only set tanggal_akad from tenant if not already set in InvitationContent
+      if (!content.tanggal_akad) {
+        content.tanggal_akad = tenant.wedding_date;
+      }
     }
     
     return ResponseHelper.success(content, 'Invitation content retrieved');
@@ -1115,7 +1133,9 @@ var InvitationContentService = {
         updated.bride_name = tenant.bride_name;
         updated.groom_name = tenant.groom_name;
         updated.wedding_date = tenant.wedding_date;
-        updated.tanggal_akad = tenant.wedding_date; // Keep consistent view
+        if (!updated.tanggal_akad) {
+          updated.tanggal_akad = tenant.wedding_date;
+        }
       }
 
       ActivityLogService.log(tenantId, auth.user_id, 'update_invitation_content');

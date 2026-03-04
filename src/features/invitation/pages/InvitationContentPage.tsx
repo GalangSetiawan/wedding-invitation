@@ -60,66 +60,132 @@ export function InvitationContentPage() {
         });
     };
 
+    // Helpers to normalize data from GAS backend
+    // GAS returns "null" string for empty cells, and dates/times as ISO timestamps
+    const sanitizeValue = (val: any): string => {
+        if (val === null || val === undefined || val === 'null') return '';
+        return String(val);
+    };
+
+    const parseApiDate = (val: any): string => {
+        if (!val || val === 'null') return '';
+        const str = String(val);
+        // Already in YYYY-MM-DD format
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+        // ISO timestamp like "+020521-02-01T17:00:00.000Z" or "2022-05-21T..."
+        try {
+            const d = new Date(str);
+            if (!isNaN(d.getTime())) {
+                const yyyy = d.getFullYear();
+                if (yyyy > 9999 || yyyy < 1900) return ''; // Invalid year
+                return `${yyyy}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            }
+        } catch { /* fall through */ }
+        return '';
+    };
+
+    const parseApiTime = (val: any): string => {
+        if (!val || val === 'null') return '';
+        const str = String(val);
+        // Already in HH:mm format
+        if (/^\d{2}:\d{2}$/.test(str)) return str;
+        // ISO timestamp like "1899-12-30T00:18:48.000Z" — extract UTC time as HH:mm
+        try {
+            const d = new Date(str);
+            if (!isNaN(d.getTime())) {
+                return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+            }
+        } catch { /* fall through */ }
+        return '';
+    };
+
     const fetchContent = async () => {
+        const defaultOpeningText = "Kepada Yth\nBapak/Ibu/Saudara/i :";
+        const defaultValues: Partial<InvitationContent> = {
+            tanggal_akad: tenant?.wedding_date || '',
+            flag_lokasi_akad_dan_resepsi_berbeda: false,
+            akad_map: '',
+            nama_lokasi_akad: '',
+            keterangan_lokasi_akad: '',
+            resepsi_map: '',
+            nama_lokasi_resepsi: '',
+            keterangan_lokasi_resepsi: '',
+            flag_tampilkan_nama_orang_tua: true,
+            nama_bapak_laki_laki: '',
+            nama_ibu_laki_laki: '',
+            nama_bapak_perempuan: '',
+            nama_ibu_perempuan: '',
+            flag_tampilkan_sosial_media_mempelai: false,
+            account_media_sosial_laki_laki: '',
+            account_media_sosial_perempuan: '',
+            flag_pakai_timeline_kisah: false,
+            timeline_kisah: '',
+            tampilkan_amplop_online: true,
+            nama_bank_1: '',
+            nama_rekening_bank_1: '',
+            nomor_rekening_bank_1: '',
+            nama_bank_2: '',
+            nama_rekening_bank_2: '',
+            nomor_rekening_bank_2: '',
+            custom_kalimat_1: '',
+            custom_kalimat_2: '',
+            custom_kalimat_3: '',
+            custom_kalimat_4: '',
+            flag_pakai_kalimat_pembuka_custom: false,
+            kalimat_pembuka_undangan: defaultOpeningText,
+            flag_pakai_kalimat_penutup_custom: false,
+            kalimat_penutup_undangan: '',
+            link_backsound_music: '',
+            bride_name: tenant?.bride_name || '',
+            groom_name: tenant?.groom_name || '',
+            wedding_date: tenant?.wedding_date || '',
+        };
+
         try {
             const response = await invitationContentApi.getContent();
-            const defaultOpeningText = "Kepada Yth\nBapak/Ibu/Saudara/i :";
 
             if (response.success && response.data) {
-                // Ensure default opening text is applied if no custom text is set
-                const currentData = { ...response.data };
-                if (!getBool(currentData.flag_pakai_kalimat_pembuka_custom) && !currentData.kalimat_pembuka_undangan) {
-                    currentData.kalimat_pembuka_undangan = defaultOpeningText;
+                // Merge default values with backend data so no fields are completely undefined.
+                const currentData = { ...defaultValues, ...response.data };
+
+                // Sanitize null strings (GAS returns "null" for empty cells)
+                for (const key of Object.keys(currentData) as Array<keyof typeof currentData>) {
+                    const v = currentData[key];
+                    if (typeof v === 'string' && v === 'null') {
+                        (currentData as any)[key] = '';
+                    }
                 }
 
-                // Pre-fill tenant data if not yet set in invitation content
-                if (!currentData.tanggal_akad && tenant?.wedding_date) {
-                    currentData.tanggal_akad = tenant.wedding_date;
+                // Convert date fields from ISO to YYYY-MM-DD for <input type="date">
+                currentData.wedding_date = parseApiDate(currentData.wedding_date) || tenant?.wedding_date || '';
+                currentData.tanggal_akad = parseApiDate(currentData.tanggal_akad) || tenant?.wedding_date || '';
+
+                // Convert time fields from ISO to HH:mm for <input type="time">
+                currentData.jam_awal_akad = parseApiTime(currentData.jam_awal_akad);
+                currentData.jam_akhir_akad = parseApiTime(currentData.jam_akhir_akad);
+                currentData.jam_awal_resepsi = parseApiTime(currentData.jam_awal_resepsi);
+                currentData.jam_akhir_resepsi = parseApiTime(currentData.jam_akhir_resepsi);
+
+                // Sanitize text fields that might be null/undefined
+                currentData.keterangan_lokasi_resepsi = sanitizeValue(currentData.keterangan_lokasi_resepsi);
+                currentData.keterangan_lokasi_akad = sanitizeValue(currentData.keterangan_lokasi_akad);
+
+                // Ensure default opening text is applied if no custom text is set
+                if (!getBool(currentData.flag_pakai_kalimat_pembuka_custom) && !currentData.kalimat_pembuka_undangan) {
+                    currentData.kalimat_pembuka_undangan = defaultOpeningText;
                 }
 
                 setContent(currentData);
                 parseTimeline(currentData.timeline_kisah);
             } else {
-                // Initialize with default empty values if backend returns null
-                setContent({
-                    tanggal_akad: tenant?.wedding_date || '', // Prefill from tenant
-                    flag_lokasi_akad_dan_resepsi_berbeda: false,
-                    akad_map: '',
-                    nama_lokasi_akad: '',
-                    keterangan_lokasi_akad: '',
-                    resepsi_map: '',
-                    nama_lokasi_resepsi: '',
-                    keterangan_lokasi_resepsi: '',
-                    flag_tampilkan_nama_orang_tua: true,
-                    nama_bapak_laki_laki: '',
-                    nama_ibu_laki_laki: '',
-                    nama_bapak_perempuan: '',
-                    nama_ibu_perempuan: '',
-                    flag_tampilkan_sosial_media_mempelai: false,
-                    account_media_sosial_laki_laki: '',
-                    account_media_sosial_perempuan: '',
-                    flag_pakai_timeline_kisah: false,
-                    timeline_kisah: '',
-                    tampilkan_amplop_online: true,
-                    nama_bank_1: '',
-                    nama_rekening_bank_1: '',
-                    nomor_rekening_bank_1: '',
-                    nama_bank_2: '',
-                    nama_rekening_bank_2: '',
-                    nomor_rekening_bank_2: '',
-                    custom_kalimat_1: '',
-                    custom_kalimat_2: '',
-                    custom_kalimat_3: '',
-                    custom_kalimat_4: '',
-                    flag_pakai_kalimat_pembuka_custom: false,
-                    kalimat_pembuka_undangan: defaultOpeningText, // Set default
-                    flag_pakai_kalimat_penutup_custom: false,
-                    kalimat_penutup_undangan: '',
-                    link_backsound_music: '',
-                });
+                // Initialize with default empty values if backend returns null completely
+                setContent(defaultValues);
             }
-        } catch {
+        } catch (error: any) {
+            console.error('Failed to fetch invitation content:', error);
             toast.error('Failed to load invitation content settings');
+            // Ensure content is set to defaults even after error
+            setContent(prev => prev ?? defaultValues);
         } finally {
             setLoading(false);
         }
@@ -148,12 +214,16 @@ export function InvitationContentPage() {
             const response = await invitationContentApi.updateContent(payload);
             if (response.success) {
                 toast.success('Settings saved successfully');
-                setContent(response.data);
+                // Don't overwrite content state with response.data — the backend
+                // may not return all fields (e.g. tenant-injected wedding_date,
+                // time fields, resepsi location). The state already has the
+                // correct data that was just saved.
                 setIframeKey(prev => prev + 1); // Force iframe reload
             } else {
-                toast.error('Failed to save settings');
+                toast.error(response.message || 'Failed to save settings');
             }
-        } catch {
+        } catch (error: any) {
+            console.error('Save error:', error);
             toast.error('An error occurred while saving');
         } finally {
             setSaving(false);
@@ -239,6 +309,31 @@ export function InvitationContentPage() {
                         {/* TAB 1: MEMPELAI & KELUARGA */}
                         {activeTab === 'mempelai' && (
                             <>
+                                {/* ================= MEMPELAI UTAMA ================= */}
+                                <div className="card space-y-4 shadow-sm border border-gray-100 dark:border-gray-800">
+                                    <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
+                                        <div className="p-2 bg-rose-50 dark:bg-rose-900/20 rounded-lg text-rose-600">
+                                            <HiOutlineHeart className="w-5 h-5" />
+                                        </div>
+                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Data Mempelai Utama</h2>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 animate-fade-in">
+                                        <div>
+                                            <label className="label-field">Nama Laki-laki (Groom)</label>
+                                            <input type="text" value={content.groom_name || ''} onChange={(e) => updateField('groom_name', e.target.value)} className="input-field" placeholder="e.g. Romeo" />
+                                        </div>
+                                        <div>
+                                            <label className="label-field">Nama Perempuan (Bride)</label>
+                                            <input type="text" value={content.bride_name || ''} onChange={(e) => updateField('bride_name', e.target.value)} className="input-field" placeholder="e.g. Juliet" />
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="label-field">Tanggal Pernikahan Utama (Wedding Date)</label>
+                                            <input type="date" value={content.wedding_date || ''} onChange={(e) => updateField('wedding_date', e.target.value)} className="input-field" />
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* ================= PARENTS SETTINGS ================= */}
                                 <div className="card space-y-4 shadow-sm border border-gray-100 dark:border-gray-800">
                                     <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
@@ -358,7 +453,7 @@ export function InvitationContentPage() {
                                     <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 space-y-4">
                                         <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Wedding Schedule</p>
                                         <div>
-                                            <label className="label-field">Wedding Date (Tanggal Acara Utama)</label>
+                                            <label className="label-field">Tanggal Akad / Acara Utama</label>
                                             <input type="date" value={content.tanggal_akad || ''} onChange={(e) => updateField('tanggal_akad', e.target.value)} className="input-field" />
                                         </div>
 
@@ -393,6 +488,7 @@ export function InvitationContentPage() {
                                                 <div className="flex items-center justify-between mb-1">
                                                     <label className="label-field mb-0">Link Google Maps</label>
                                                     <button
+                                                        title="buka map"
                                                         onClick={() => {
                                                             setMapTarget('akad');
                                                             setShowMapModal(true);
@@ -421,6 +517,7 @@ export function InvitationContentPage() {
                                                     <div className="flex items-center justify-between mb-1">
                                                         <label className="label-field mb-0">Link Google Maps</label>
                                                         <button
+                                                            title="buka map"
                                                             onClick={() => {
                                                                 setMapTarget('resepsi');
                                                                 setShowMapModal(true);

@@ -42,6 +42,25 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
     (response) => {
         useApiStore.getState().decrementLoading();
+
+        // Detect if Google Apps Script returned an HTML page (usually a login redirect due to wrong deployment settings)
+        if (typeof response.data === 'string' && response.data.trim().toLowerCase().startsWith('<!doctype html>')) {
+            throw new Error('Backend returned an HTML page instead of JSON. Ensure Google Apps Script is deployed as "Execute as: Me" and "Who has access: Anyone".');
+        }
+
+        // Detect 401 from GAS (returned as HTTP 200 with code:401 in body)
+        if (response.data && typeof response.data === 'object' && response.data.code === 401) {
+            useAuthStore.getState().logout();
+            toast.error('Sesi Anda telah berakhir. Silakan login kembali.');
+            window.location.href = '/login';
+            return Promise.reject(new Error(response.data.message || 'Token expired'));
+        }
+
+        // If data is missing success property and it's an object, it might be an invalid response
+        if (response.data && typeof response.data === 'object' && !('success' in response.data) && !('data' in response.data)) {
+            console.warn('Unexpected API response format', response.data);
+        }
+
         return response;
     },
     (error) => {

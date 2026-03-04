@@ -195,9 +195,14 @@ export interface CreateTenantRequest {
 
 export interface UpdateTenantRequest {
     id: string;
+    bride_name?: string;
+    groom_name?: string;
+    wedding_date?: string;
+    domain_slug?: string;
     plan_type?: PlanType;
     guest_limit?: number;
     status_account?: TenantStatus;
+    payment_deadline?: string;
     status_payment?: 'Menunggu pembayaran' | 'Sudah dibayar';
 }
 

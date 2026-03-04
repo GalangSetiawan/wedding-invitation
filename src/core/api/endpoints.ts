@@ -47,12 +47,12 @@ export const authApi = {
 
 export const dashboardApi = {
     getTenantDashboard: async (): Promise<ApiResponse<TenantDashboard>> => {
-        const res = await apiClient.get('', { params: { action: 'getDashboard' } });
+        const res = await apiClient.post('', { action: 'getDashboard' });
         return res.data;
     },
 
     getGlobalDashboard: async (): Promise<ApiResponse<GlobalDashboard>> => {
-        const res = await apiClient.get('', { params: { action: 'getGlobalDashboard' } });
+        const res = await apiClient.post('', { action: 'getGlobalDashboard' });
         return res.data;
     },
 };
@@ -63,9 +63,7 @@ export const dashboardApi = {
 
 export const guestApi = {
     getGuests: async (filters: GuestFilters): Promise<ApiResponse<PaginatedResponse<Guest>>> => {
-        const res = await apiClient.get('', {
-            params: { action: 'getGuests', ...filters },
-        });
+        const res = await apiClient.post('', { action: 'getGuests', ...filters });
         return res.data;
     },
 
@@ -100,7 +98,7 @@ export const guestApi = {
     },
 
     exportGuests: async (): Promise<ApiResponse<Guest[]>> => {
-        const res = await apiClient.get('', { params: { action: 'exportGuests' } });
+        const res = await apiClient.post('', { action: 'exportGuests' });
         return res.data;
     },
 };
@@ -111,7 +109,7 @@ export const guestApi = {
 
 export const tenantApi = {
     getTenants: async (): Promise<ApiResponse<Tenant[]>> => {
-        const res = await apiClient.get('', { params: { action: 'getTenants' } });
+        const res = await apiClient.post('', { action: 'getTenants' });
         return res.data;
     },
 
@@ -132,7 +130,7 @@ export const tenantApi = {
 
 export const wishApi = {
     getWishes: async (): Promise<ApiResponse<Wish[]>> => {
-        const res = await apiClient.get('', { params: { action: 'getWishes' } });
+        const res = await apiClient.post('', { action: 'getWishes' });
         return res.data;
     },
 
@@ -153,7 +151,7 @@ export const wishApi = {
 
 export const giftApi = {
     getGifts: async (): Promise<ApiResponse<Gift[]>> => {
-        const res = await apiClient.get('', { params: { action: 'getGifts' } });
+        const res = await apiClient.post('', { action: 'getGifts' });
         return res.data;
     },
 
@@ -174,7 +172,7 @@ export const giftApi = {
 
 export const activityApi = {
     getActivityLogs: async (): Promise<ApiResponse<ActivityLog[]>> => {
-        const res = await apiClient.get('', { params: { action: 'getActivityLogs' } });
+        const res = await apiClient.post('', { action: 'getActivityLogs' });
         return res.data;
     },
 };
@@ -185,7 +183,7 @@ export const activityApi = {
 
 export const invitationContentApi = {
     getContent: async (): Promise<ApiResponse<InvitationContent | null>> => {
-        const res = await apiClient.get('', { params: { action: 'getInvitationContent' } });
+        const res = await apiClient.post('', { action: 'getInvitationContent' });
         return res.data;
     },
 
@@ -210,17 +208,17 @@ const publicClient = axios.create({
 
 export const publicApi = {
     getInvitation: async (slug: string) => {
-        const res = await publicClient.get('', { params: { action: 'getPublicInvitation', slug } });
+        const res = await publicClient.post('', JSON.stringify({ action: 'getPublicInvitation', slug }));
         return res.data;
     },
 
     submitRSVP: async (data: { slug: string; invitation_code: string; status: string; number_of_guests?: number }) => {
-        const res = await publicClient.post('', { action: 'submitPublicRSVP', ...data });
+        const res = await publicClient.post('', JSON.stringify({ action: 'submitPublicRSVP', ...data }));
         return res.data;
     },
 
     submitWish: async (data: { slug: string; guest_name: string; message: string }) => {
-        const res = await publicClient.post('', { action: 'submitPublicWish', ...data });
+        const res = await publicClient.post('', JSON.stringify({ action: 'submitPublicWish', ...data }));
         return res.data;
     },
 };

@@ -49,9 +49,24 @@ export function TenantPage() {
         }
     };
 
+    const isDomainSlugValid = (slug: string, excludeId?: string) => {
+        if (!slug) return true;
+        const activeTenantsWithSlug = tenants.filter(t =>
+            t.domain_slug === slug &&
+            t.status_account === 'active' &&
+            t.id !== excludeId
+        );
+        return activeTenantsWithSlug.length === 0;
+    };
+
     const handleCreateTenant = async () => {
         if (!form.bride_name || !form.groom_name || !form.admin_username || !form.admin_password) {
             toast.error('Please fill in all required fields');
+            return;
+        }
+
+        if (!isDomainSlugValid(form.domain_slug)) {
+            toast.error('Domain slug is already in use by an active tenant');
             return;
         }
         try {
@@ -69,8 +84,18 @@ export function TenantPage() {
         }
     };
 
-    const handleUpdateTenant = async (updates: { plan_type?: PlanType; status_account?: TenantStatus; status_payment?: 'Menunggu pembayaran' | 'Sudah dibayar' }) => {
+    const handleUpdateTenant = async (updates: Partial<Tenant>) => {
         if (!selectedTenant) return;
+
+        const targetStatus = updates.status_account || selectedTenant.status_account;
+        const targetSlug = updates.domain_slug !== undefined ? updates.domain_slug : selectedTenant.domain_slug;
+        if (targetStatus === 'active' && targetSlug) {
+            if (!isDomainSlugValid(targetSlug, selectedTenant.id)) {
+                toast.error('Domain slug is already in use by another active tenant');
+                return;
+            }
+        }
+
         try {
             const response = await tenantApi.updateTenant({ id: selectedTenant.id, ...updates });
             if (response.success) {
@@ -260,6 +285,28 @@ export function TenantPage() {
                 {selectedTenant && (
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="label-field text-xs text-gray-500 mb-1 block">Bride Name</label>
+                                <input type="text" value={editForm.bride_name || ''} onChange={(e) => setEditForm(prev => ({ ...prev, bride_name: e.target.value }))} className="input-field text-sm" />
+                            </div>
+                            <div>
+                                <label className="label-field text-xs text-gray-500 mb-1 block">Groom Name</label>
+                                <input type="text" value={editForm.groom_name || ''} onChange={(e) => setEditForm(prev => ({ ...prev, groom_name: e.target.value }))} className="input-field text-sm" />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="label-field text-xs text-gray-500 mb-1 block">Wedding Date</label>
+                                <input type="date" value={editForm.wedding_date ? new Date(editForm.wedding_date).toISOString().split('T')[0] : ''} onChange={(e) => setEditForm(prev => ({ ...prev, wedding_date: e.target.value }))} className="input-field text-sm" />
+                            </div>
+                            <div>
+                                <label className="label-field text-xs text-gray-500 mb-1 block">Domain Slug</label>
+                                <input type="text" value={editForm.domain_slug || ''} onChange={(e) => setEditForm(prev => ({ ...prev, domain_slug: e.target.value }))} className="input-field text-sm" />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
                             <div className="card bg-gray-50 dark:bg-gray-800 p-4">
                                 <div className="flex flex-col gap-2">
                                     <p className="text-xs text-gray-400">Current Plan</p>
@@ -291,17 +338,25 @@ export function TenantPage() {
 
                         <div className="card bg-gray-50 dark:bg-gray-800 p-4">
                             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Payment Status</p>
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
                                 <select
                                     value={editForm.status_payment}
                                     onChange={(e) => setEditForm(prev => ({ ...prev, status_payment: e.target.value as 'Menunggu pembayaran' | 'Sudah dibayar' }))}
-                                    className="select-field text-sm"
+                                    className="select-field text-sm w-1/2"
                                 >
                                     <option value="Menunggu pembayaran">Menunggu pembayaran</option>
                                     <option value="Sudah dibayar">Sudah dibayar</option>
                                 </select>
+                                <div className="w-1/2">
+                                    <p className="text-xs text-gray-500 mb-1">Deadline Date</p>
+                                    <input
+                                        type="date"
+                                        value={editForm.payment_deadline ? new Date(editForm.payment_deadline).toISOString().split('T')[0] : ''}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, payment_deadline: e.target.value }))}
+                                        className="input-field text-sm"
+                                    />
+                                </div>
                             </div>
-                            <p className="text-xs text-gray-500 mt-3">Deadline: {new Date(selectedTenant.payment_deadline).toLocaleDateString('id-ID')}</p>
                         </div>
                     </div>
                 )}
