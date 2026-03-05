@@ -16,6 +16,8 @@ import {
     HiOutlineOfficeBuilding,
     HiOutlineChartBar,
     HiOutlineDocumentText,
+    HiOutlineUserAdd,
+    HiOutlineQrcode,
 } from 'react-icons/hi';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
 
@@ -40,7 +42,9 @@ export function DashboardLayout() {
         ]
         : [
             { to: '/dashboard', icon: HiOutlineHome, label: 'Dashboard', roles: ['tenant_admin', 'staff'] },
+            { to: '/scanner', icon: HiOutlineQrcode, label: 'Scanner Kehadiran', roles: ['tenant_admin', 'staff'] },
             { to: '/guests', icon: HiOutlineUsers, label: 'Guests', roles: ['tenant_admin', 'staff'] },
+            { to: '/staff', icon: HiOutlineUserAdd, label: 'Manage Staff', roles: ['tenant_admin'] },
             { to: '/invitation-content', icon: HiOutlineDocumentText, label: 'Content Settings', roles: ['tenant_admin'] },
             { to: '/wishes', icon: HiOutlineHeart, label: 'Wishes', roles: ['tenant_admin'] },
             { to: '/gifts', icon: HiOutlineGift, label: 'Gifts', roles: ['tenant_admin'] },
@@ -149,9 +153,15 @@ export function DashboardLayout() {
                                 <HiOutlineMenu className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                             </button>
                             <div>
-                                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
-                                    {isSuperAdmin ? 'Super Admin Panel' : 'Wedding Dashboard'}
-                                </h2>
+                                {user?.role === 'staff' ? (
+                                    <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+                                        Resepsionis Pernikahan {tenant?.groom_name} & {tenant?.bride_name}
+                                    </h2>
+                                ) : (
+                                    <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+                                        {isSuperAdmin ? 'Super Admin Panel' : 'Wedding Dashboard'}
+                                    </h2>
+                                )}
                             </div>
                         </div>
 

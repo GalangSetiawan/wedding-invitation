@@ -1,9 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
 import '../invitation.css';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { publicApi } from '@/core/api/endpoints';
 import type { Wish, InvitationContent, TimelineItem } from '@/types';
-import { HiOutlineMusicNote, HiPause, HiPlay } from 'react-icons/hi';
+import { HiOutlineMusicNote, HiPause, HiPlay, HiOutlineQrcode } from 'react-icons/hi';
+import { Modal } from '@/shared/components/Modal';
+import { QRCodeSVG } from 'qrcode.react';
+import toast from 'react-hot-toast';
 
 interface TenantPublic {
     bride_name: string;
@@ -16,6 +19,7 @@ interface InvitationData {
     tenant: TenantPublic;
     wishes: Wish[];
     content: Partial<InvitationContent>;
+    guest?: import('@/types').Guest;
 }
 
 interface InvitationPageProps {
@@ -24,11 +28,18 @@ interface InvitationPageProps {
 
 export function InvitationPage({ previewData }: InvitationPageProps) {
     const { slug } = useParams<{ slug: string }>();
+    const location = useLocation();
     const [data, setData] = useState<InvitationData | null>(null);
     const [loading, setLoading] = useState(!previewData); // Only load if not previewing
     const [error, setError] = useState('');
     const [isOpened, setIsOpened] = useState(false);
     const [wishes, setWishes] = useState<Wish[]>([]);
+    const [showQRModal, setShowQRModal] = useState(false);
+
+    const [showGuestForm, setShowGuestForm] = useState(false);
+    const [tempGuestData, setTempGuestData] = useState({ name: '', category: 'Tamu' });
+    const [generatedUninvitedQR, setGeneratedUninvitedQR] = useState<string | null>(null);
+    const [isCheckingGuest, setIsCheckingGuest] = useState(false);
 
     // We merge the fetched content with the injected previewData (which takes precedence)
     const activeContent = previewData || data?.content || {};
@@ -146,7 +157,9 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
 
     const fetchInvitation = async () => {
         try {
-            const res = await publicApi.getInvitation(slug!);
+            const searchParams = new URLSearchParams(location.search);
+            const guestid = searchParams.get('guestid');
+            const res = await publicApi.getInvitation(slug!, guestid);
             if (res.success) {
                 setData(res.data);
                 setWishes(res.data.wishes || []);
@@ -253,29 +266,197 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         );
     }
 
+    const guestQrModal = data?.guest ? (
+        <Modal
+            isOpen={showQRModal}
+            onClose={() => setShowQRModal(false)}
+            title="QR Code Kehadiran"
+            size="sm"
+        >
+            <div className="flex flex-col items-center gap-4 py-4 w-full text-center">
+                <div className="p-4 bg-white rounded-2xl shadow-lg inline-block">
+                    <QRCodeSVG
+                        value={data.guest.invitation_code}
+                        size={200}
+                        fgColor="#1A1A2E"
+                        bgColor="#FFFFFF"
+                        level="M"
+                    />
+                </div>
+                <div>
+                    <p className="font-semibold text-gray-800 dark:text-white text-lg">{data.guest.name}</p>
+                    <p className="text-gold-600 font-mono text-sm mt-1">{data.guest.invitation_code}</p>
+                </div>
+                <p className="text-sm text-gray-500 mt-2 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
+                    Pindai QR Code ini pada saat Anda tiba di lokasi acara untuk konfirmasi kedatangan.
+                </p>
+            </div>
+        </Modal>
+    ) : null;
+
+    const uninvitedGuestFormModal = (
+        <Modal
+            isOpen={showGuestForm}
+            onClose={() => setShowGuestForm(false)}
+            title={generatedUninvitedQR ? "QR Code Kehadiran" : "Isi Data Kehadiran"}
+        >
+            {!generatedUninvitedQR ? (
+                <div className="py-4 space-y-4">
+                    <p className="text-sm text-gray-500 mb-4">
+                        Untuk mempercepat proses check-in di lokasi acara, silakan lengkapi data diri Anda terlebih dahulu.
+                    </p>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Nama Lengkap
+                        </label>
+                        <input
+                            type="text"
+                            value={tempGuestData.name}
+                            onChange={(e) => setTempGuestData({ ...tempGuestData, name: e.target.value })}
+                            className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-gold-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                            placeholder="Masukkan nama Anda"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Kategori Tamu
+                        </label>
+                        <select
+                            value={tempGuestData.category}
+                            onChange={(e) => setTempGuestData({ ...tempGuestData, category: e.target.value })}
+                            className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-gold-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                        >
+                            <option value="Keluarga Laki-laki">Keluarga Laki-laki</option>
+                            <option value="Keluarga Perempuan">Keluarga Perempuan</option>
+                            <option value="Teman/Rekan Kerja">Teman/Rekan Kerja</option>
+                            <option value="Tamu Undangan">Tamu Undangan Umum</option>
+                            <option value="VIP">VIP</option>
+                        </select>
+                    </div>
+                    <div className="pt-4 flex justify-end">
+                        <button
+                            onClick={async () => {
+                                if (tempGuestData.name.trim() === '') return;
+                                setIsCheckingGuest(true);
+                                try {
+                                    const res = await publicApi.checkGuest({
+                                        slug: tenant.domain_slug,
+                                        name: tempGuestData.name.trim()
+                                    });
+
+                                    if (!res.success) {
+                                        toast.error(res.message || 'Gagal mengecek nama tamu. Pastikan backend sudah di-deploy.', { duration: 4000 });
+                                        return;
+                                    }
+
+                                    if (res.data?.exists) {
+                                        toast.error(`Nama '${tempGuestData.name.trim()}' sudah ada di daftar. Mohon tambahkan inisial, gelar, atau keterangan lain sebagai pembeda.`, { duration: 5000 });
+                                    } else {
+                                        setGeneratedUninvitedQR(`NEW_GUEST:${tempGuestData.name.trim()}:${tempGuestData.category}`);
+                                    }
+                                } catch (error) {
+                                    toast.error('Gagal mengecek nama tamu.');
+                                } finally {
+                                    setIsCheckingGuest(false);
+                                }
+                            }}
+                            disabled={!tempGuestData.name.trim() || isCheckingGuest}
+                            className="px-6 py-2 bg-gold-600 hover:bg-gold-700 text-white rounded-lg transition-colors font-medium cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {isCheckingGuest ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Memeriksa...
+                                </>
+                            ) : (
+                                'Buat QR Code'
+                            )}
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <div className="flex flex-col items-center gap-4 py-4 w-full text-center">
+                    <div className="p-4 bg-white rounded-2xl shadow-lg inline-block">
+                        <QRCodeSVG
+                            value={generatedUninvitedQR}
+                            size={200}
+                            fgColor="#1A1A2E"
+                            bgColor="#FFFFFF"
+                            level="M"
+                        />
+                    </div>
+                    <div>
+                        <p className="font-semibold text-gray-800 dark:text-white text-lg">{tempGuestData.name}</p>
+                        <p className="text-gold-600 text-sm mt-1">{tempGuestData.category}</p>
+                    </div>
+
+                    <button
+                        onClick={() => setGeneratedUninvitedQR(null)}
+                        className="px-6 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors font-medium cursor-pointer text-sm w-full md:w-auto mt-2"
+                    >
+                        Koreksi Data
+                    </button>
+
+                    <p className="text-sm text-gray-500 mt-2 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
+                        Pindai QR Code ini pada saat Anda tiba di lokasi acara untuk konfirmasi kedatangan.
+                    </p>
+                </div>
+            )}
+        </Modal>
+    );
+
     // COVER (before opened)
     if (!isOpened) {
         return (
-            <div className="inv-page inv-cover">
-                <div className="inv-cover-overlay" />
-                <div className="inv-cover-content">
-                    {getBool(activeContent.flag_pakai_kalimat_pembuka_custom) && activeContent.kalimat_pembuka_undangan && (
-                        <p className="inv-cover-opening text-sm italic font-serif text-white/90 mb-6 max-w-sm mx-auto text-center leading-relaxed">
-                            {activeContent.kalimat_pembuka_undangan}
-                        </p>
-                    )}
-                    <p className="inv-cover-label">The Wedding Of</p>
-                    <h1 className="inv-cover-names">
-                        {tenant.groom_name} <span>&</span> {tenant.bride_name}
-                    </h1>
-                    <p className="inv-cover-date">{formatDate(tenant.wedding_date)}</p>
-                    <button className="inv-cover-btn mt-6" onClick={() => { setIsOpened(true); setIsPlaying(true); }}>
-                        <span>💌</span> Buka Undangan
-                    </button>
+            <>
+                <div className="inv-page inv-cover">
+                    <div className="inv-cover-overlay" />
+                    <div className="inv-cover-content">
+                        {getBool(activeContent.flag_pakai_kalimat_pembuka_custom) && activeContent.kalimat_pembuka_undangan && (
+                            <p className="inv-cover-opening text-sm italic font-serif text-white/90 mb-6 max-w-sm mx-auto text-center leading-relaxed">
+                                {activeContent.kalimat_pembuka_undangan}
+                            </p>
+                        )}
+
+                        <p className="inv-cover-label">The Wedding Of</p>
+                        <h1 className="inv-cover-names">
+                            {tenant.groom_name} <span>&</span> {tenant.bride_name}
+                        </h1>
+                        <p className="inv-cover-date">{formatDate(tenant.wedding_date)}</p>
+
+                        {data?.guest && (
+                            <div className="mb-6 p-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg text-center max-w-sm mx-auto">
+                                <p className="text-white/80 text-xs mb-1 font-serif italic">Kepada Yth. Bapak/Ibu/Saudara/i</p>
+                                <p className="text-white font-bold text-lg">{data.guest.name}</p>
+                            </div>
+                        )}
+
+                        <div className="mt-6 flex flex-col md:flex-row items-center justify-center gap-4">
+                            <button className="inv-cover-btn" onClick={() => { setIsOpened(true); setIsPlaying(true); }}>
+                                <span>💌</span> Buka Undangan
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    if (data?.guest) {
+                                        setShowQRModal(true);
+                                    } else {
+                                        setShowGuestForm(true);
+                                    }
+                                }}
+                                className="inline-flex items-center gap-2 px-6 py-3 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-md border border-white/40 transition-all font-medium shadow-xl hover:scale-105 active:scale-95 ring-4 ring-white/10"
+                            >
+                                <HiOutlineQrcode className="w-5 h-5" />
+                                Tampilkan QR
+                            </button>
+                        </div>
+                    </div>
+                    <div className="inv-cover-ornament inv-cover-ornament-top" />
+                    <div className="inv-cover-ornament inv-cover-ornament-bottom" />
                 </div>
-                <div className="inv-cover-ornament inv-cover-ornament-top" />
-                <div className="inv-cover-ornament inv-cover-ornament-bottom" />
-            </div>
+                {guestQrModal}
+                {uninvitedGuestFormModal}
+            </>
         );
     }
 
@@ -297,6 +478,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                     <div className="inv-hero-date-badge">
                         <span>{formatDate(tenant.wedding_date)}</span>
                     </div>
+
                     {activeContent.custom_kalimat_2 && (
                         <p className="mt-8 text-sm max-w-md mx-auto italic opacity-90 leading-relaxed font-serif">
                             "{activeContent.custom_kalimat_2}"
@@ -635,6 +817,23 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
                     {isPlaying ? <HiPause className="w-6 h-6 animate-pulse" /> : <HiPlay className="w-6 h-6" />}
                 </button>
             )}
+
+            {/* FLOATING QR BUTTON */}
+            {isOpened && (
+                <button
+                    onClick={() => {
+                        if (data?.guest) setShowQRModal(true);
+                        else setShowGuestForm(true);
+                    }}
+                    className="fixed bottom-6 left-6 z-50 p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-xl border border-gold-100 text-gold-600 hover:bg-gold-50 transition-all hover:scale-110 active:scale-95 flex items-center justify-center animate-fade-in"
+                    aria-label="Tampilkan QR Code Kehadiran"
+                >
+                    <HiOutlineQrcode className="w-6 h-6" />
+                </button>
+            )}
+
+            {guestQrModal}
+            {uninvitedGuestFormModal}
         </div>
     );
 }

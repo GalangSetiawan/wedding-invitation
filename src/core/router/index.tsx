@@ -6,6 +6,8 @@ import { RegisterPage } from '@/features/auth/pages/RegisterPage';
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
 import { GlobalDashboardPage } from '@/features/dashboard/pages/GlobalDashboardPage';
 import { GuestPage } from '@/features/guest/pages/GuestPage';
+import { StaffPage } from '@/features/tenant/pages/StaffPage';
+import { ScannerPage } from '@/features/scanner/pages/ScannerPage';
 import { TenantPage } from '@/features/tenant/pages/TenantPage';
 import { WishesPage } from '@/features/wishes/pages/WishesPage';
 import { GiftsPage } from '@/features/gifts/pages/GiftsPage';
@@ -84,6 +86,22 @@ export const router = createHashRouter([
             {
                 path: 'guests',
                 element: <GuestPage />,
+            },
+            {
+                path: 'staff',
+                element: (
+                    <ProtectedRoute allowedRoles={['tenant_admin']}>
+                        <StaffPage />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: 'scanner',
+                element: (
+                    <ProtectedRoute allowedRoles={['tenant_admin', 'staff']}>
+                        <ScannerPage />
+                    </ProtectedRoute>
+                ),
             },
             {
                 path: 'tenants',

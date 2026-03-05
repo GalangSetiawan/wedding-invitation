@@ -35,7 +35,7 @@ export function GuestPage() {
         bulkDelete,
     } = useGuestStore();
 
-    const { user } = useAuthStore();
+    const { user, tenant } = useAuthStore();
     const isStaff = user?.role === 'staff';
 
     const [showAddModal, setShowAddModal] = useState(false);
@@ -452,25 +452,74 @@ export function GuestPage() {
             <Modal
                 isOpen={showQRModal}
                 onClose={() => { setShowQRModal(false); setSelectedGuest(null); }}
-                title="Guest QR Code"
-                size="sm"
+                title="Guest QR Code & Link"
+                size="lg"
             >
                 {selectedGuest && (
-                    <div className="flex flex-col items-center gap-4 py-4">
-                        <div className="p-6 bg-white rounded-2xl shadow-lg">
-                            <QRCodeSVG
-                                value={selectedGuest.invitation_code}
-                                size={200}
-                                fgColor="#1A1A2E"
-                                bgColor="#FFFFFF"
-                                level="H"
-                            />
+                    <div className="flex flex-col md:flex-row gap-6 w-full h-full items-start">
+                        {/* Kiri: QR Code & Detail Guest */}
+                        <div className="flex flex-col items-center flex-1 w-full bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-700">
+                            <div className="p-4 bg-white rounded-2xl shadow-sm mb-4">
+                                <QRCodeSVG
+                                    value={selectedGuest.invitation_code}
+                                    size={180}
+                                    fgColor="#1A1A2E"
+                                    bgColor="#FFFFFF"
+                                    level="H"
+                                />
+                            </div>
+                            <div className="text-center w-full">
+                                <p className="font-semibold text-gray-800 dark:text-white text-xl">{selectedGuest.name}</p>
+                                <p className="text-gold-600 font-mono text-sm mt-1 bg-gold-50 dark:bg-gold-900/20 px-3 py-1 rounded-full inline-block">{selectedGuest.invitation_code}</p>
+                                <div className="mt-3">
+                                    <span className="badge-gold">{selectedGuest.category}</span>
+                                </div>
+                            </div>
+
+                            {tenant && (
+                                <div className="w-full h-full text-left mt-6">
+                                    <p className="text-sm font-semibold text-gray-800 dark:text-white mb-2">Link Undangan Khusus</p>
+                                    <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 p-2 rounded-lg border border-gray-200 dark:border-gray-700 focus-within:ring-2 focus-within:ring-gold-500/20 transition-all">
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={`${window.location.origin}/wedding-invitation/#/invitation/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`}
+                                            className="bg-transparent border-none text-xs w-full text-gray-600 dark:text-gray-300 focus:outline-none"
+                                            onClick={(e) => e.currentTarget.select()}
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(`${window.location.origin}/wedding-invitation/#/invitation/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`);
+                                                toast.success('Link undangan disalin!');
+                                            }}
+                                            className="px-4 py-1.5 bg-gold-600 hover:bg-gold-700 text-white rounded outline-none text-xs font-medium transition-colors shrink-0 whitespace-nowrap shadow-sm"
+                                        >
+                                            Salin
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-2">Kirim link ini ke tamu Anda via WhatsApp atau Email.</p>
+                                </div>
+                            )}
                         </div>
-                        <div className="text-center">
-                            <p className="font-semibold text-gray-800 dark:text-white text-lg">{selectedGuest.name}</p>
-                            <p className="text-gold-600 font-mono text-sm mt-1">{selectedGuest.invitation_code}</p>
-                            <span className="badge-gold mt-2 inline-block">{selectedGuest.category}</span>
-                        </div>
+
+                        {/* Kanan: Link & Preview */}
+                        {tenant && (
+                            <div className="flex-[1.5] flex flex-col w-full h-full">
+                                <div className="w-full ">
+                                    {/* <p className="text-sm font-semibold text-gray-800 dark:text-white mb-2">Preview Undangan</p> */}
+                                    <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden h-[670px] w-full bg-gray-100 dark:bg-gray-900 shadow-inner relative group flex-shrink-0">
+                                        <iframe
+                                            src={`/wedding-invitation/#/invitation/${tenant.domain_slug}?guestid=${selectedGuest.invitation_code}`}
+                                            className="w-full h-full border-none opacity-90 group-hover:opacity-100 transition-opacity"
+                                            title="Live Preview"
+                                        />
+                                        <div className="absolute top-3 right-3 bg-black/60 text-white text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded backdrop-blur-md pointer-events-none">
+                                            Live
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </Modal>

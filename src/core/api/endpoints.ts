@@ -125,6 +125,27 @@ export const tenantApi = {
 };
 
 // =============================================
+// STAFF API
+// =============================================
+
+export const staffApi = {
+    getStaffs: async (): Promise<ApiResponse<any[]>> => {
+        const res = await apiClient.post('', { action: 'getStaffs' });
+        return res.data;
+    },
+
+    createStaff: async (data: any): Promise<ApiResponse<any>> => {
+        const res = await apiClient.post('', { action: 'createStaffUser', ...data });
+        return res.data;
+    },
+
+    deleteStaff: async (id: string): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'deleteStaffUser', id });
+        return res.data;
+    },
+};
+
+// =============================================
 // WISH API
 // =============================================
 
@@ -207,8 +228,10 @@ const publicClient = axios.create({
 });
 
 export const publicApi = {
-    getInvitation: async (slug: string) => {
-        const res = await publicClient.post('', JSON.stringify({ action: 'getPublicInvitation', slug }));
+    getInvitation: async (slug: string, guestid?: string | null) => {
+        const payload: any = { action: 'getPublicInvitation', slug };
+        if (guestid) payload.guestid = guestid;
+        const res = await publicClient.post('', JSON.stringify(payload));
         return res.data;
     },
 
@@ -219,6 +242,11 @@ export const publicApi = {
 
     submitWish: async (data: { slug: string; guest_name: string; message: string }) => {
         const res = await publicClient.post('', JSON.stringify({ action: 'submitPublicWish', ...data }));
+        return res.data;
+    },
+
+    checkGuest: async (data: { slug: string; name: string }) => {
+        const res = await publicClient.post('', JSON.stringify({ action: 'checkPublicGuest', ...data }));
         return res.data;
     },
 };

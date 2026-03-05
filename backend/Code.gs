@@ -10,7 +10,7 @@
 // ===========================
 
 var CONFIG = {
-  SPREADSHEET_ID: 'YOUR_SPREADSHEET_ID_HERE',
+  SPREADSHEET_ID: SpreadsheetApp.getActiveSpreadsheet().getId(),
   TOKEN_SECRET: 'wedding-saas-secret-key-2026',
   TOKEN_EXPIRY_HOURS: 24,
   RATE_LIMIT_WINDOW: 60000, // 1 minute
@@ -50,7 +50,7 @@ function handleRequest(e, method) {
     }
 
     // Public endpoints (no auth required)
-    var publicActions = ['login', 'registerTenant', 'getPublicInvitation', 'submitPublicRSVP', 'submitPublicWish'];
+    var publicActions = ['login', 'registerTenant', 'getPublicInvitation', 'submitPublicRSVP', 'submitPublicWish', 'checkPublicGuest'];
     if (publicActions.indexOf(action) !== -1) {
       return routeAction(action, payload, null);
     }
@@ -114,6 +114,17 @@ function routeAction(action, payload, auth) {
     case 'exportGuests':
       return GuestService.exportGuests(auth);
 
+    // Staff
+    case 'getStaffs':
+      PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
+      return AuthService.getStaffs(auth);
+    case 'createStaffUser':
+      PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
+      return AuthService.createStaffUser(auth, payload);
+    case 'deleteStaffUser':
+      PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
+      return AuthService.deleteStaffUser(auth, payload);
+
     // Tenants
     case 'getTenants':
       PermissionService.requireRole(auth, ['superadmin']);
@@ -163,6 +174,8 @@ function routeAction(action, payload, auth) {
       return PublicService.submitRSVP(payload);
     case 'submitPublicWish':
       return PublicService.submitWish(payload);
+    case 'checkPublicGuest':
+      return PublicService.checkGuest(payload);
 
     default:
       return ResponseHelper.error('Unknown action: ' + action, 400);
@@ -530,6 +543,72 @@ var AuthService = {
     } catch (e) {
       return null;
     }
+  },
+
+  getStaffs: function(auth) {
+    var tenantId = PermissionService.getTenantId(auth);
+    var users = DB.getByTenant('Users', tenantId);
+    var staffs = users.filter(function(u) { return u.role === 'staff'; });
+    return ResponseHelper.success(staffs.map(function(u) {
+      return { id: u.id, username: u.username, role: u.role, created_at: u.created_at };
+    }), 'Staffs retrieved');
+  },
+
+  createStaffUser: function(auth, payload) {
+    var tenantId = PermissionService.getTenantId(auth);
+    Validator.required(payload, ['username', 'password']);
+    var sanitized = Validator.sanitizeObject(payload);
+
+    var existingUser = DB.findOne('Users', 'username', sanitized.username);
+    if (existingUser) {
+      return ResponseHelper.error('Username already exists', 400);
+    }
+
+    var userId = DB.generateId();
+    var now = new Date().toISOString();
+
+    var user = {
+      id: userId,
+      username: sanitized.username,
+      password_hash: this.hashPassword(sanitized.password),
+      role: 'staff',
+      tenant_id: tenantId,
+      created_at: now
+    };
+    
+    DB.insert('Users', user);
+    
+    // Attempt to log activity, ignore errors if service fails
+    try {
+        ActivityLogService.log(tenantId, auth.user_id, 'create_staff');
+    } catch(e) {}
+
+    return ResponseHelper.success({
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      created_at: user.created_at
+    }, 'Staff account created successfully');
+  },
+
+  deleteStaffUser: function(auth, payload) {
+    var tenantId = PermissionService.getTenantId(auth);
+    Validator.required(payload, ['id']);
+    var userId = payload.id;
+
+    var existingUser = DB.findOne('Users', 'id', userId);
+    if (!existingUser || existingUser.tenant_id !== tenantId || existingUser.role !== 'staff') {
+      return ResponseHelper.error('Staff account not found or unauthorized', 404);
+    }
+
+    var success = DB.deleteRow('Users', userId);
+    if (success) {
+      try {
+          ActivityLogService.log(tenantId, auth.user_id, 'delete_staff');
+      } catch(e) {}
+      return ResponseHelper.success(null, 'Staff account deleted');
+    }
+    return ResponseHelper.error('Failed to delete staff account', 500);
   }
 };
 
@@ -781,9 +860,56 @@ var GuestService = {
   checkinGuest: function(auth, payload) {
     Validator.required(payload, ['invitation_code']);
     var tenantId = PermissionService.getTenantId(auth);
+    var inviteCode = String(payload.invitation_code).trim();
 
+    // Support Uninvited Guest Dynamic Payloads
+    if (inviteCode.indexOf('NEW_GUEST:') === 0) {
+      try {
+        var dataStr = inviteCode.substring('NEW_GUEST:'.length);
+        var guestData = {};
+        if (dataStr.charAt(0) === '{') {
+            guestData = JSON.parse(dataStr);
+        } else {
+            var parts = dataStr.split(':');
+            guestData = { 
+                name: parts[0], 
+                category: parts[1] || 'Tamu Undangan Umum',
+                phone: parts[2] || ''
+            };
+        }
+        
+        // Ensure guest limit handles new additions explicitly offsite
+        var tenant = DB.findOne('Tenants', 'id', tenantId);
+        if (tenant && tenant.guest_limit !== -1) {
+          var currentCount = DB.count('Guests', tenantId);
+          if (currentCount >= tenant.guest_limit) {
+            return ResponseHelper.error('Guest limit reached. Cannot register new guest via QR.', 403);
+          }
+        }
+        
+        var newGuest = {
+          id: DB.generateId(),
+          tenant_id: tenantId,
+          name: Validator.sanitize(guestData.name || 'Unknown Guest'),
+          phone: Validator.sanitize(guestData.phone || ''),
+          category: Validator.sanitize(guestData.category || 'Tamu'),
+          invitation_code: 'WED-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+          status: 'confirmed',
+          number_of_guests: 1,
+          checkin_status: 'checked_in',
+          created_at: new Date().toISOString()
+        };
+        
+        DB.insert('Guests', newGuest);
+        return ResponseHelper.success(newGuest, 'New guest successfully registered and checked in.');
+      } catch (e) {
+        return ResponseHelper.error('Failed to parse dynamic guest QR.', 400);
+      }
+    }
+
+    // Typical check-in flow
     var guests = DB.getByTenant('Guests', tenantId);
-    var guest = guests.find(function(g) { return g.invitation_code === payload.invitation_code; });
+    var guest = guests.find(function(g) { return g.invitation_code === inviteCode; });
 
     if (!guest) {
       return ResponseHelper.error('Invalid invitation code', 404);
@@ -1179,6 +1305,17 @@ var PublicService = {
 
     var content = DB.findOne('InvitationContent', 'tenant_id', tenant.id);
 
+    var guest = null;
+    if (payload.guestid) {
+      var allGuests = DB.getByTenant('Guests', tenant.id);
+      for (var i = 0; i < allGuests.length; i++) {
+        if (allGuests[i].invitation_code === payload.guestid) {
+          guest = allGuests[i];
+          break;
+        }
+      }
+    }
+
     return ResponseHelper.success({
       tenant: {
         bride_name: tenant.bride_name,
@@ -1187,8 +1324,32 @@ var PublicService = {
         domain_slug: tenant.domain_slug
       },
       wishes: wishes.slice(0, 50),
-      content: content || {}
+      content: content || {},
+      guest: guest
     }, 'Invitation data retrieved');
+  },
+
+  checkGuest: function(payload) {
+    Validator.required(payload, ['slug', 'name']);
+    var sanitized = Validator.sanitizeObject(payload);
+
+    var tenant = DB.findOne('Tenants', 'domain_slug', sanitized.slug);
+    if (!tenant) return ResponseHelper.error('Invitation not found', 404);
+
+    var guests = DB.getByTenant('Guests', tenant.id);
+    var targetName = String(sanitized.name).toLowerCase().trim();
+    var exists = false;
+
+    for (var i = 0; i < guests.length; i++) {
+        if (guests[i].name && String(guests[i].name).toLowerCase().trim() === targetName) {
+            exists = true;
+            break;
+        }
+    }
+
+    return ResponseHelper.success({
+        exists: exists
+    }, 'Guest existence checked');
   },
 
   submitRSVP: function(payload) {
