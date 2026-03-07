@@ -908,11 +908,16 @@ var GuestService = {
     }
 
     // Typical check-in flow
-    var guests = DB.getByTenant('Guests', tenantId);
-    var guest = guests.find(function(g) { return g.invitation_code === inviteCode; });
+    var allGuests = DB.getAll('Guests');
+    var guest = allGuests.find(function(g) { return g.invitation_code === inviteCode; });
 
     if (!guest) {
-      return ResponseHelper.error('Invalid invitation code', 404);
+      return ResponseHelper.error('Tamu tidak ditemukan atau QR Code tidak valid', 404);
+    }
+
+    // Validate Tenant ID
+    if (guest.tenant_id !== tenantId) {
+      return ResponseHelper.error('QR Code ini bukan untuk acara Anda (Beda Tenant)', 403);
     }
 
     DB.update('Guests', guest.id, { checkin_status: 'checked_in' });
