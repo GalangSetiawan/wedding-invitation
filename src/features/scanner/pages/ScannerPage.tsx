@@ -29,6 +29,12 @@ export function ScannerPage() {
     const scannerRef = useRef<Html5Qrcode | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Save scanning state to ref for valid unmount cleanup
+    const isScanningRef = useRef(false);
+    useEffect(() => {
+        isScanningRef.current = isScanning;
+    }, [isScanning]);
+
     // Manual Input State
     const [manualGuests, setManualGuests] = useState<ManualGuest[]>([]);
     const [sortBy, setSortBy] = useState<'name' | 'time'>('time');
@@ -48,7 +54,7 @@ export function ScannerPage() {
 
         return () => {
             // Cleanup on unmount
-            if (isScanning && scannerRef.current) {
+            if (isScanningRef.current && scannerRef.current) {
                 scannerRef.current.stop().catch(console.error);
             }
         };
@@ -279,9 +285,12 @@ export function ScannerPage() {
                         <h2 className="font-semibold text-lg text-gray-800 dark:text-white mb-4">Scanner QR</h2>
 
                         {/* Camera Feed Container */}
-                        <div id="qr-reader" className="w-full max-w-sm mx-auto min-h-[300px] bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center relative">
+                        <div className="w-full max-w-sm mx-auto min-h-[300px] bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center relative">
+                            {/* Inner element strictly for Html5Qrcode, NO REACT CHILDREN */}
+                            <div id="qr-reader" className="w-full h-full absolute inset-0 z-0"></div>
+
                             {!isScanning && (
-                                <div className="text-gray-400 dark:text-gray-500 flex flex-col items-center">
+                                <div className="z-10 text-gray-400 dark:text-gray-500 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 w-full h-full absolute inset-0 pointer-events-none">
                                     <HiOutlineQrcode className="w-16 h-16 mb-2 opacity-50" />
                                     <p>Kamera Nonaktif</p>
                                     <p className="text-xs mt-1">Atau Seret/Paste gambar QR ke halaman ini</p>
