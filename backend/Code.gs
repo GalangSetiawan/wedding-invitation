@@ -920,6 +920,11 @@ var GuestService = {
       return ResponseHelper.error('QR Code ini bukan untuk acara Anda (Beda Tenant)', 403);
     }
 
+    // Prevent double check-in
+    if (guest.checkin_status === 'checked_in') {
+      return ResponseHelper.error('Tamu ini sudah melakukan check-in sebelumnya', 400);
+    }
+
     DB.update('Guests', guest.id, { checkin_status: 'checked_in' });
 
     return ResponseHelper.success(guest, 'Guest checked in successfully');
