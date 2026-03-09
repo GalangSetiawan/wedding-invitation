@@ -461,7 +461,7 @@ var AuthService = {
       groom_name: sanitized.groom_name,
       wedding_date: sanitized.wedding_date,
       domain_slug: sanitized.domain_slug,
-      plan_type: 'free',
+      plan_type: 'basic',
       guest_limit: 100,
       created_at: now,
       status_account: 'active',
@@ -676,8 +676,8 @@ var TenantService = {
     var userId = DB.generateId();
     var now = new Date().toISOString();
 
-    var planLimits = { free: 100, pro: 500, premium: -1 };
-    var plan = sanitized.plan_type || 'free';
+    var planLimits = { basic: 100, pro: 500, premium: -1 };
+    var plan = sanitized.plan_type || 'basic';
     var deadline = new Date(new Date(now).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
     var tenant = {
@@ -723,8 +723,11 @@ var TenantService = {
     // Only superadmin can modify billing/plan details
     if (auth.role === 'superadmin') {
       if (payload.plan_type) {
+      // Enforce limits
+    var plan = sanitized.plan_type || 'basic';
+    var limits = { basic: 100, pro: 500, premium: 10000 };
         updates.plan_type = payload.plan_type;
-        var planLimits = { free: 100, pro: 500, premium: -1 };
+        var planLimits = { basic: 100, pro: 500, premium: -1 }; // Re-define planLimits here for update context
         updates.guest_limit = planLimits[payload.plan_type] || 100;
       }
       if (payload.status_account) updates.status_account = payload.status_account;
@@ -1059,13 +1062,13 @@ var DashboardService = {
     var activeTenants = tenants.filter(function(t) { return t.status_account === 'active'; });
 
     // Revenue estimation
-    var planPrices = { free: 0, pro: 500000, premium: 1500000 };
+    var planPrices = { basic: 0, pro: 149000, premium: 299000 };
     var revenue = tenants.reduce(function(sum, t) {
       return sum + (planPrices[t.plan_type] || 0);
     }, 0);
 
     // Plan distribution
-    var planCount = { free: 0, pro: 0, premium: 0 };
+    var planCount = { basic: 0, pro: 0, premium: 0 };
     tenants.forEach(function(t) {
       if (planCount[t.plan_type] !== undefined) planCount[t.plan_type]++;
     });
@@ -1465,7 +1468,7 @@ var ThemeService = {
       var tenantId = PermissionService.getTenantId(auth);
       var tenant = DB.findOne('Tenants', 'id', tenantId);
       if (tenant) {
-        var priorities = { free: 1, pro: 2, premium: 3 };
+        var priorities = { basic: 1, pro: 2, premium: 3 };
         var tenantPriority = priorities[tenant.plan_type] || 1;
         themes = themes.filter(function(t) {
           var themePriority = priorities[t.plan_type] || 1;

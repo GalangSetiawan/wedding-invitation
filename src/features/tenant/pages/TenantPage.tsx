@@ -26,7 +26,7 @@ export function TenantPage() {
         groom_name: '',
         wedding_date: '',
         domain_slug: '',
-        plan_type: 'free',
+        plan_type: 'basic',
         admin_username: '',
         admin_password: '',
     });
@@ -109,7 +109,7 @@ export function TenantPage() {
     };
 
     const resetForm = () => {
-        setForm({ bride_name: '', groom_name: '', wedding_date: '', domain_slug: '', plan_type: 'free', admin_username: '', admin_password: '' });
+        setForm({ bride_name: '', groom_name: '', wedding_date: '', domain_slug: '', plan_type: 'basic', admin_username: '', admin_password: '' });
     };
 
     const planBadge = (plan: PlanType) => {
@@ -248,9 +248,9 @@ export function TenantPage() {
                     <div>
                         <label className="label-field">Plan Type</label>
                         <select value={form.plan_type} onChange={(e) => setForm((f) => ({ ...f, plan_type: e.target.value as PlanType }))} className="select-field">
-                            <option value="free">Free (100 guests)</option>
-                            <option value="pro">Pro (500 guests)</option>
-                            <option value="premium">Premium (Unlimited)</option>
+                            <option value="basic">Basic (Gratis)</option>
+                            <option value="pro">Pro</option>
+                            <option value="premium">Premium</option>
                         </select>
                     </div>
                     <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
@@ -315,9 +315,9 @@ export function TenantPage() {
                                         onChange={(e) => setEditForm(prev => ({ ...prev, plan_type: e.target.value as PlanType }))}
                                         className="select-field text-sm"
                                     >
-                                        <option value="free">FREE</option>
-                                        <option value="pro">PRO</option>
-                                        <option value="premium">PREMIUM</option>
+                                        <option value="basic">Basic (Gratis)</option>
+                                        <option value="pro">Pro</option>
+                                        <option value="premium">Premium</option>
                                     </select>
                                 </div>
                             </div>

@@ -134,7 +134,7 @@ Sheet: Tenants
 * groom_name
 * wedding_date
 * domain_slug
-* plan_type (free/pro/premium)
+* plan_type (basic/pro/premium)
 * guest_limit
 * created_at
 * status
@@ -521,7 +521,7 @@ Sheet: Tenants
 * groom_name
 * wedding_date
 * domain_slug
-* plan_type (free/pro/premium)
+* plan_type (basic/pro/premium)
 * guest_limit
 * created_at
 * status

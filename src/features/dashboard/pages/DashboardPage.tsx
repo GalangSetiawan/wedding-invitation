@@ -207,7 +207,9 @@ export function DashboardPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Plan</p>
-                            <span className="badge-gold text-sm capitalize">{tenant.plan_type}</span>
+                            {tenant.plan_type === 'basic' && <span className="badge-gray text-sm capitalize">{tenant.plan_type}</span>}
+                            {tenant.plan_type === 'pro' && <span className="badge-blue text-sm capitalize">{tenant.plan_type}</span>}
+                            {tenant.plan_type === 'premium' && <span className="badge-gold text-sm capitalize">{tenant.plan_type}</span>}
                         </div>
                         <div>
                             <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Guest Limit</p>

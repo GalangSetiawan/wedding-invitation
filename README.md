@@ -260,7 +260,7 @@ wedding-saas-platform/
 | groom_name | String | Groom's name |
 | wedding_date | Date | Wedding date |
 | domain_slug | String | URL slug |
-| plan_type | Enum | free / pro / premium |
+| plan_type | Enum | basic / pro / premium |
 | guest_limit | Number | Max guests (-1 = unlimited) |
 | created_at | DateTime | Creation timestamp |
 | status | Enum | active / suspended |

@@ -370,12 +370,12 @@ export function InvitationContentPage() {
                                                 </div>
                                                 <div className="p-3 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
                                                     <h3 className="font-semibold text-gray-800 dark:text-white truncate">{theme.name}</h3>
-                                                    <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider
-                                                    ${theme.plan_type === 'free' ? 'bg-gray-100 text-gray-600' :
+                                                    <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded 
+                                                    ${theme.plan_type === 'basic' ? 'bg-gray-100 text-gray-600' :
                                                             theme.plan_type === 'pro' ? 'bg-blue-100 text-blue-600' :
-                                                                'bg-purple-100 text-purple-600'}`}>
+                                                                'bg-gold-100 text-gold-600'}`}>
                                                         {theme.plan_type}
-                                                    </span>
+                                                </span>
                                                 </div>
                                             </div>
                                         ))

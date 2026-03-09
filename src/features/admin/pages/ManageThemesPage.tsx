@@ -52,9 +52,9 @@ export function ManageThemesPage() {
             header: 'Plan',
             render: (item: Theme) => (
                 <span className={`px-2 py-1 rounded-full text-xs font-medium 
-                    ${item.plan_type === 'free' ? 'bg-gray-100 text-gray-700' :
+                    ${item.plan_type === 'basic' ? 'bg-gray-100 text-gray-700' :
                         item.plan_type === 'pro' ? 'bg-blue-100 text-blue-700' :
-                            'bg-purple-100 text-purple-700'}`}>
+                            'bg-gold-100 text-gold-700'}`}>
                     {String(item.plan_type).toUpperCase()}
                 </span>
             )

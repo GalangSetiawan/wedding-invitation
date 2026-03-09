@@ -22,7 +22,7 @@ export function ThemeEditorPage() {
 
     // Form and Editor State
     const [name, setName] = useState('');
-    const [planType, setPlanType] = useState<PlanType>('free');
+    const [planType, setPlanType] = useState<PlanType>('basic');
     const [previewImage, setPreviewImage] = useState('');
     const [htmlCode, setHtmlCode] = useState('<!-- Tambahkan tombol dengan id="btn-open-invitation" di cover -->\n<div class="wedding-theme">\n  <h1>{{bride_name}} & {{groom_name}}</h1>\n  <button id="btn-open-invitation">Buka Undangan</button>\n</div>');
     const [cssCode, setCssCode] = useState('.wedding-theme {\n  text-align: center;\n  padding: 50px;\n}');
@@ -248,6 +248,34 @@ export function ThemeEditorPage() {
         return () => clearTimeout(timer);
     }, [htmlCode, cssCode, jsCode, previewTenant, showDataBinding, showCover]);
 
+    const handleEditorWillMount = (monaco: any) => {
+        monaco.editor.defineTheme('monokai', {
+            base: 'vs-dark',
+            inherit: true,
+            rules: [
+                { token: '', background: '272822', foreground: 'f8f8f2' },
+                { token: 'comment', foreground: '75715e' },
+                { token: 'keyword', foreground: 'f92672' },
+                { token: 'string', foreground: 'e6db74' },
+                { token: 'number', foreground: 'ae81ff' },
+                { token: 'regexp', foreground: 'fd971f' },
+                { token: 'type', foreground: '66d9ef' },
+                { token: 'class', foreground: 'a6e22e' },
+                { token: 'function', foreground: 'a6e22e' },
+                { token: 'variable', foreground: 'f8f8f2' },
+            ],
+            colors: {
+                'editor.background': '#272822',
+                'editor.foreground': '#f8f8f2',
+                'editorCursor.foreground': '#f8f8f0',
+                'editor.lineHighlightBackground': '#3e3d32',
+                'editor.selectionBackground': '#49483e',
+                'editorIndentGuide.background': '#464741',
+                'editorIndentGuide.activeBackground': '#767771',
+            }
+        });
+    };
+
     const toggleFocusMode = async (enable: boolean) => {
         setIsFocusMode(enable);
         try {
@@ -292,13 +320,6 @@ export function ThemeEditorPage() {
                                 {isNew ? 'Membuat Tema Baru' : 'Edit Tema'}
                             </h1>
                             <button
-                                onClick={() => setIsGuideOpen(true)}
-                                className="text-gray-400 hover:text-gold-500 transition-colors tooltip tooltip-bottom"
-                                title="Panduan Pembuatan Tema"
-                            >
-                                <HiOutlineInformationCircle className="w-5 h-5" />
-                            </button>
-                            <button
                                 onClick={() => toggleFocusMode(true)}
                                 className="ml-2 px-3 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded transition-colors"
                             >
@@ -325,18 +346,25 @@ export function ThemeEditorPage() {
                     <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 justify-between items-center">
                         <div className="flex flex-1">
                             <button
-                            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTabPanel === 'editor' ? 'border-gold-500 text-gold-600 bg-white dark:bg-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                            onClick={() => setActiveTabPanel('editor')}
-                        >
-                            <span className="flex justify-center items-center gap-2">&lt;/&gt; Code</span>
-                        </button>
-                        <button
-                            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTabPanel === 'settings' ? 'border-gold-500 text-gold-600 bg-white dark:bg-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                            onClick={() => setActiveTabPanel('settings')}
-                        >
-                            <span className="flex justify-center items-center gap-2">⚙️ Pengaturan</span>
-                        </button>
-                    </div>
+                                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTabPanel === 'editor' ? 'border-gold-500 text-gold-600 bg-white dark:bg-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                                onClick={() => setActiveTabPanel('editor')}
+                            >
+                                <span className="flex justify-center items-center gap-2">&lt;/&gt; Code</span>
+                            </button>
+                            <button
+                                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTabPanel === 'settings' ? 'border-gold-500 text-gold-600 bg-white dark:bg-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                                onClick={() => setActiveTabPanel('settings')}
+                            >
+                                <span className="flex justify-center items-center gap-2">⚙️ Pengaturan</span>
+                            </button>
+                            <button
+                                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors border-transparent text-gray-500 hover:text-gray-700`}
+                                onClick={() => setIsGuideOpen(true)}
+                                title="Panduan Pembuatan Tema"
+                            >
+                                <span className="flex justify-center items-center gap-2"><HiOutlineInformationCircle className="w-5 h-5" /> Panduan</span>
+                            </button>
+                        </div>
                         {isFocusMode && (
                             <button
                                 onClick={() => toggleFocusMode(false)}
@@ -366,7 +394,7 @@ export function ThemeEditorPage() {
                                     onChange={e => setPlanType(e.target.value as PlanType)}
                                     className="input-field"
                                 >
-                                    <option value="free">Free</option>
+                                    <option value="basic">Basic</option>
                                     <option value="pro">Pro</option>
                                     <option value="premium">Premium</option>
                                 </select>
@@ -403,7 +431,8 @@ export function ThemeEditorPage() {
                             <div className="flex-1 w-full min-h-0">
                                 <Editor
                                     height="100%"
-                                    theme="vs-dark"
+                                    theme="monokai"
+                                    beforeMount={handleEditorWillMount}
                                     path={`index.${activeTab === 'js' ? 'javascript' : activeTab}`}
                                     defaultLanguage={activeTab === 'js' ? 'javascript' : activeTab}
                                     value={activeTab === 'html' ? htmlCode : activeTab === 'css' ? cssCode : jsCode}

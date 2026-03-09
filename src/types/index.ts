@@ -6,7 +6,7 @@
 export type Role = 'superadmin' | 'tenant_admin' | 'staff';
 
 // Plan Types
-export type PlanType = 'free' | 'pro' | 'premium';
+export type PlanType = 'basic' | 'pro' | 'premium';
 
 // Guest Status
 export type GuestStatus = 'confirmed' | 'declined' | 'pending';
@@ -88,7 +88,7 @@ export interface Theme {
     html_template?: string;
     css_template?: string;
     js_template?: string;
-    plan_type: 'free' | 'pro' | 'premium';
+    plan_type: 'basic' | 'pro' | 'premium';
     preview_image?: string;
     created_at: string;
 }
@@ -228,7 +228,7 @@ export interface CreateThemeRequest {
     html_template?: string;
     css_template?: string;
     js_template?: string;
-    plan_type: 'free' | 'pro' | 'premium';
+    plan_type: 'basic' | 'pro' | 'premium';
     preview_image?: string;
 }
 
@@ -238,7 +238,7 @@ export interface UpdateThemeRequest {
     html_template?: string;
     css_template?: string;
     js_template?: string;
-    plan_type: 'free' | 'pro' | 'premium';
+    plan_type: 'basic' | 'pro' | 'premium';
     preview_image?: string;
 }
 
