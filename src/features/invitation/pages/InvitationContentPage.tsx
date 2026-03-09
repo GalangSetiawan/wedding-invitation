@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { invitationContentApi } from '@/core/api/endpoints';
+import { invitationContentApi, tenantApi, themeApi } from '@/core/api/endpoints';
 import { PageLoader } from '@/shared/components/Loading';
-import type { InvitationContent } from '@/types';
+import type { InvitationContent, Theme } from '@/types';
 import toast from 'react-hot-toast';
 import {
     HiOutlineMap,
@@ -14,6 +14,7 @@ import {
     HiOutlineMusicNote,
     HiOutlinePlus,
     HiOutlineTrash,
+    HiOutlineColorSwatch,
     HiOutlineExternalLink
 } from 'react-icons/hi';
 import type { TimelineItem } from '@/types';
@@ -22,11 +23,13 @@ import { MapPickerModal } from '../components/MapPickerModal';
 
 export function InvitationContentPage() {
     const [content, setContent] = useState<Partial<InvitationContent> | null>(null);
+    const [themes, setThemes] = useState<Theme[]>([]);
+    const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
     const [timelineItems, setTimelineItems] = useState<{ tanggal: string; judul: string; deskripsi: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const { tenant } = useAuthStore();
-    const [activeTab, setActiveTab] = useState<'mempelai' | 'acara' | 'cerita' | 'hadiah'>('mempelai');
+    const [activeTab, setActiveTab] = useState<'tema' | 'mempelai' | 'acara' | 'cerita' | 'hadiah'>('tema');
     const [iframeKey, setIframeKey] = useState(0);
 
     // Map Picker State
@@ -142,9 +145,18 @@ export function InvitationContentPage() {
         };
 
         try {
-            const response = await invitationContentApi.getContent();
+            const [contentRes, themesRes] = await Promise.all([
+                invitationContentApi.getContent(),
+                themeApi.getThemes()
+            ]);
 
-            if (response.success && response.data) {
+            if (themesRes.success) {
+                setThemes(themesRes.data);
+                if (tenant?.theme_id) setSelectedThemeId(tenant.theme_id);
+            }
+
+            if (contentRes.success && contentRes.data) {
+                const response = contentRes;
                 // Merge default values with backend data so no fields are completely undefined.
                 const currentData = { ...defaultValues, ...response.data };
 
@@ -205,14 +217,25 @@ export function InvitationContentPage() {
     };
 
     const handleSave = async () => {
-        if (!content) return;
+        if (!content || !tenant) return;
         setSaving(true);
         try {
             // Update the string value before saving
             const payload = { ...content, timeline_kisah: JSON.stringify(timelineItems) };
 
-            const response = await invitationContentApi.updateContent(payload);
-            if (response.success) {
+            const contentRes = await invitationContentApi.updateContent(payload);
+
+            // Save theme selection if changed
+            if (selectedThemeId !== tenant.theme_id) {
+                await tenantApi.updateTenant({
+                    id: tenant.id,
+                    theme_id: selectedThemeId || undefined
+                });
+                // We mutate tenant locally so it doesn't trigger another save loop if clicked again
+                tenant.theme_id = selectedThemeId || undefined;
+            }
+
+            if (contentRes.success) {
                 toast.success('Settings saved successfully');
                 // Don't overwrite content state with response.data — the backend
                 // may not return all fields (e.g. tenant-injected wedding_date,
@@ -220,7 +243,7 @@ export function InvitationContentPage() {
                 // correct data that was just saved.
                 setIframeKey(prev => prev + 1); // Force iframe reload
             } else {
-                toast.error(response.message || 'Failed to save settings');
+                toast.error(contentRes.message || 'Failed to save settings');
             }
         } catch (error: any) {
             console.error('Save error:', error);
@@ -240,6 +263,7 @@ export function InvitationContentPage() {
     if (loading || !content) return <PageLoader />;
 
     const tabs = [
+        { id: 'tema', label: 'Pilih Tema', icon: HiOutlineColorSwatch },
         { id: 'mempelai', label: 'Mempelai & Keluarga', icon: HiOutlineUserGroup },
         { id: 'acara', label: 'Teks & Acara', icon: HiOutlineMap },
         { id: 'cerita', label: 'Cerita Cinta', icon: HiOutlineHeart },
@@ -291,7 +315,7 @@ export function InvitationContentPage() {
                             {tabs.map(tab => (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setActiveTab(tab.id as 'mempelai' | 'acara' | 'cerita' | 'hadiah')}
+                                    onClick={() => setActiveTab(tab.id as 'tema' | 'mempelai' | 'acara' | 'cerita' | 'hadiah')}
                                     className={`flex items-center gap-2 px-5 py-3 text-sm font-medium rounded-t-xl transition-all duration-200 mb-[-1px] ${activeTab === tab.id
                                         ? 'text-gold-600 bg-white dark:bg-gray-900 border-t border-l border-r border-gray-200 dark:border-gray-800 shadow-[0_-2px_6px_rgba(0,0,0,0.02)]'
                                         : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 border-t border-l border-r border-transparent'
@@ -305,6 +329,60 @@ export function InvitationContentPage() {
                     </div>
 
                     <div className="grid grid-cols-1 gap-6 animate-fade-in">
+
+                        {/* TAB 0: TEMA */}
+                        {activeTab === 'tema' && (
+                            <div className="card space-y-4 shadow-sm border border-gray-100 dark:border-gray-800">
+                                <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
+                                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600">
+                                        <HiOutlineColorSwatch className="w-5 h-5" />
+                                    </div>
+                                    <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Pilih Tema Undangan</h2>
+                                </div>
+                                <div className="pt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 animate-fade-in">
+                                    {themes.length === 0 ? (
+                                        <p className="text-gray-500 text-sm">Belum ada tema yang tersedia.</p>
+                                    ) : (
+                                        themes.map(theme => (
+                                            <div
+                                                key={theme.id}
+                                                onClick={() => setSelectedThemeId(theme.id)}
+                                                className={`cursor-pointer rounded-xl border-2 transition-all duration-200 overflow-hidden group 
+                                                    ${selectedThemeId === theme.id ? 'border-gold-500 shadow-lg shadow-gold-500/20 transform -translate-y-1' : 'border-gray-200 dark:border-gray-700 hover:border-gold-300 dark:hover:border-gold-700'}`}
+                                            >
+                                                <div className="aspect-[3/4] bg-gray-100 dark:bg-gray-800 relative">
+                                                    {theme.preview_image ? (
+                                                        <img src={theme.preview_image} alt={theme.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                            <HiOutlineColorSwatch className="w-12 h-12 opacity-50" />
+                                                        </div>
+                                                    )}
+                                                    {selectedThemeId === theme.id && (
+                                                        <div className="absolute inset-0 bg-gold-500/10 flex items-center justify-center">
+                                                            <div className="bg-gold-500 text-white p-2 rounded-full shadow-lg">
+                                                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                                </svg>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="p-3 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
+                                                    <h3 className="font-semibold text-gray-800 dark:text-white truncate">{theme.name}</h3>
+                                                    <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider
+                                                    ${theme.plan_type === 'free' ? 'bg-gray-100 text-gray-600' :
+                                                            theme.plan_type === 'pro' ? 'bg-blue-100 text-blue-600' :
+                                                                'bg-purple-100 text-purple-600'}`}>
+                                                        {theme.plan_type}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* TAB 1: MEMPELAI & KELUARGA */}
                         {activeTab === 'mempelai' && (
@@ -365,7 +443,7 @@ export function InvitationContentPage() {
                                                     />
                                                 </div>
                                             </div>
-                  
+
                                             <div className="space-y-3">
                                                 <div>
                                                     <label className="label-field">Bride's Instagram (e.g. @username)</label>
@@ -428,7 +506,7 @@ export function InvitationContentPage() {
                                     )}
                                 </div>
 
-                                
+
                             </>
                         )}
 
@@ -465,7 +543,7 @@ export function InvitationContentPage() {
                                                     <input type="date" value={content.tanggal_akad || ''} onChange={(e) => updateField('tanggal_akad', e.target.value)} className="input-field" />
                                                 </div>
                                             </div>
-                  
+
                                             <div className="space-y-3">
                                                 <div>
                                                     <label className="label-field">Tanggal Resepsi</label>

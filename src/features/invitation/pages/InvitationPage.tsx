@@ -7,6 +7,8 @@ import { HiOutlineMusicNote, HiPause, HiPlay, HiOutlineQrcode } from 'react-icon
 import { Modal } from '@/shared/components/Modal';
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
+import { ThemeWrapper } from '../components/ThemeWrapper';
+import { parseTemplate } from '@/utils/templateParser';
 
 interface TenantPublic {
     bride_name: string;
@@ -20,6 +22,7 @@ interface InvitationData {
     wishes: Wish[];
     content: Partial<InvitationContent>;
     guest?: import('@/types').Guest;
+    theme?: import('@/types').Theme;
 }
 
 interface InvitationPageProps {
@@ -159,14 +162,17 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         try {
             const searchParams = new URLSearchParams(location.search);
             const guestid = searchParams.get('guestid');
+            console.log("Fetching invitation for slug:", slug, "guestid:", guestid);
             const res = await publicApi.getInvitation(slug!, guestid);
+            console.log("Response from getInvitation:", res);
             if (res.success) {
                 setData(res.data);
                 setWishes(res.data.wishes || []);
             } else {
                 setError(res.message || 'Invitation not found');
             }
-        } catch {
+        } catch (err) {
+            console.error("Error fetching invitation:", err);
             setError('Failed to load invitation');
         } finally {
             setLoading(false);
@@ -405,7 +411,109 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         </Modal>
     );
 
-    // COVER (before opened)
+    // THEME RENDERING
+    const activeTheme = data?.theme;
+    if (activeTheme?.html_template) {
+        let renderedHtml = activeTheme.html_template;
+
+        // Build replacements dictionary as a context object
+        const dataContext: Record<string, any> = {
+            bride_name: tenant.bride_name,
+            groom_name: tenant.groom_name,
+            wedding_date: formatDate(tenant.wedding_date),
+            tanggal_akad: formatDate(activeContent.tanggal_akad || tenant.wedding_date),
+            jam_akad: `${activeContent.jam_awal_akad || ''} - ${activeContent.jam_akhir_akad || 'Selesai'}`,
+            nama_lokasi_akad: activeContent.nama_lokasi_akad || '',
+            keterangan_lokasi_akad: activeContent.keterangan_lokasi_akad || '',
+            akad_map: activeContent.akad_map || '',
+            tanggal_resepsi: formatDate(activeContent.wedding_date || tenant.wedding_date),
+            jam_resepsi: `${activeContent.jam_awal_resepsi || ''} - ${activeContent.jam_akhir_resepsi || 'Selesai'}`,
+            nama_lokasi_resepsi: activeContent.nama_lokasi_resepsi || '',
+            keterangan_lokasi_resepsi: activeContent.keterangan_lokasi_resepsi || '',
+            resepsi_map: activeContent.resepsi_map || '',
+            nama_bapak_laki_laki: activeContent.nama_bapak_laki_laki || '',
+            nama_ibu_laki_laki: activeContent.nama_ibu_laki_laki || '',
+            nama_bapak_perempuan: activeContent.nama_bapak_perempuan || '',
+            nama_ibu_perempuan: activeContent.nama_ibu_perempuan || '',
+            ig_laki_laki: activeContent.account_media_sosial_laki_laki || '',
+            ig_perempuan: activeContent.account_media_sosial_perempuan || '',
+            guest_name: data?.guest?.name || 'Tamu Undangan',
+            kalimat_pembuka: activeContent.kalimat_pembuka_undangan || '',
+            kalimat_penutup: activeContent.kalimat_penutup_undangan || '',
+            quote: activeContent.custom_kalimat_1 || '',
+            bank_1: activeContent.nama_bank_1 || '',
+            rek_1: activeContent.nomor_rekening_bank_1 || '',
+            nama_rek_1: activeContent.nama_rekening_bank_1 || '',
+            bank_2: activeContent.nama_bank_2 || '',
+            rek_2: activeContent.nomor_rekening_bank_2 || '',
+            nama_rek_2: activeContent.nama_rekening_bank_2 || '',
+
+            // Advanced features 
+            has_gallery: getBool(activeContent.is_fitur_gallery),
+            has_story: getBool(activeContent.is_fitur_cerita),
+            live_streaming: getBool(activeContent.is_fitur_live_streaming) ? {
+                url: activeContent.link_live_streaming || '',
+                platform: activeContent.platform_live_streaming || 'YouTube'
+            } : null,
+            galleries: activeContent.galleries || [],
+            love_stories: activeContent.love_stories || [],
+        };
+
+        renderedHtml = parseTemplate(renderedHtml, dataContext);
+
+        return (
+            <ThemeWrapper
+                htmlBase={renderedHtml}
+                cssBase={activeTheme.css_template}
+                jsBase={activeTheme.js_template}
+                isPlaying={isPlaying}
+                isOpened={isOpened}
+                setIsPlaying={setIsPlaying}
+                setIsOpened={setIsOpened}
+                onShowQR={() => {
+                    if (data?.guest) setShowQRModal(true);
+                    else setShowGuestForm(true);
+                }}
+            >
+                {guestQrModal}
+                {uninvitedGuestFormModal}
+                {youtubeId && isPlaying && (
+                    <iframe
+                        width="0"
+                        height="0"
+                        src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&loop=1&playlist=${youtubeId}&enablejsapi=1`}
+                        title="YouTube Background Music"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        className="hidden"
+                    />
+                )}
+                {activeContent.link_backsound_music && isOpened && (
+                    <button
+                        onClick={() => setIsPlaying(!isPlaying)}
+                        className="fixed bottom-6 right-6 z-50 p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-xl border border-gold-100 text-gold-600 hover:bg-gold-50 transition-all hover:scale-110 active:scale-95 flex items-center justify-center animate-fade-in"
+                        aria-label="Toggle Music"
+                    >
+                        {isPlaying ? <HiPause className="w-6 h-6 animate-pulse" /> : <HiPlay className="w-6 h-6" />}
+                    </button>
+                )}
+                {isOpened && (
+                    <button
+                        onClick={() => {
+                            if (data?.guest) setShowQRModal(true);
+                            else setShowGuestForm(true);
+                        }}
+                        className="fixed bottom-6 left-6 z-50 p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-xl border border-gold-100 text-gold-600 hover:bg-gold-50 transition-all hover:scale-110 active:scale-95 flex items-center justify-center animate-fade-in"
+                        aria-label="Tampilkan QR Code Kehadiran"
+                    >
+                        <HiOutlineQrcode className="w-6 h-6" />
+                    </button>
+                )}
+            </ThemeWrapper>
+        );
+    }
+
+    // COVER (before opened) FOR DEFAULT THEME
     if (!isOpened) {
         return (
             <>
@@ -460,7 +568,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
         );
     }
 
-    // MAIN INVITATION
+    // MAIN DEFAULT INVITATION
     return (
         <div className="inv-page inv-main">
 

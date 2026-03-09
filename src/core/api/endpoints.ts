@@ -18,6 +18,9 @@ import type {
     Gift,
     ActivityLog,
     InvitationContent,
+    Theme,
+    CreateThemeRequest,
+    UpdateThemeRequest,
 } from '@/types';
 
 // =============================================
@@ -194,6 +197,32 @@ export const giftApi = {
 export const activityApi = {
     getActivityLogs: async (): Promise<ApiResponse<ActivityLog[]>> => {
         const res = await apiClient.post('', { action: 'getActivityLogs' });
+        return res.data;
+    },
+};
+
+// =============================================
+// THEME API
+// =============================================
+
+export const themeApi = {
+    getThemes: async (): Promise<ApiResponse<Theme[]>> => {
+        const res = await apiClient.post('', { action: 'getThemes' });
+        return res.data;
+    },
+
+    createTheme: async (data: CreateThemeRequest): Promise<ApiResponse<Theme>> => {
+        const res = await apiClient.post('', { action: 'createTheme', ...data });
+        return res.data;
+    },
+
+    updateTheme: async (data: UpdateThemeRequest): Promise<ApiResponse<Theme>> => {
+        const res = await apiClient.post('', { action: 'updateTheme', ...data });
+        return res.data;
+    },
+
+    deleteTheme: async (id: string): Promise<ApiResponse<null>> => {
+        const res = await apiClient.post('', { action: 'deleteTheme', id });
         return res.data;
     },
 };

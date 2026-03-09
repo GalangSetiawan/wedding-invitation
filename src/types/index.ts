@@ -29,6 +29,7 @@ export interface Tenant {
     domain_slug: string;
     plan_type: PlanType;
     guest_limit: number;
+    theme_id?: string;
     created_at: string;
     status_account: TenantStatus;
     payment_deadline: string;
@@ -78,6 +79,17 @@ export interface ActivityLog {
     tenant_id: string;
     user_id: string;
     action: string;
+    created_at: string;
+}
+
+export interface Theme {
+    id: string;
+    name: string;
+    html_template?: string;
+    css_template?: string;
+    js_template?: string;
+    plan_type: 'free' | 'pro' | 'premium';
+    preview_image?: string;
     created_at: string;
 }
 
@@ -201,9 +213,33 @@ export interface UpdateTenantRequest {
     domain_slug?: string;
     plan_type?: PlanType;
     guest_limit?: number;
+    theme_id?: string;
     status_account?: TenantStatus;
     payment_deadline?: string;
     status_payment?: 'Menunggu pembayaran' | 'Sudah dibayar';
+}
+
+// =============================================
+// Theme Management
+// =============================================
+
+export interface CreateThemeRequest {
+    name: string;
+    html_template?: string;
+    css_template?: string;
+    js_template?: string;
+    plan_type: 'free' | 'pro' | 'premium';
+    preview_image?: string;
+}
+
+export interface UpdateThemeRequest {
+    id: string;
+    name: string;
+    html_template?: string;
+    css_template?: string;
+    js_template?: string;
+    plan_type: 'free' | 'pro' | 'premium';
+    preview_image?: string;
 }
 
 // =============================================
@@ -264,5 +300,14 @@ export interface InvitationContent {
     flag_pakai_kalimat_penutup_custom: boolean | string;
     kalimat_penutup_undangan: string;
     link_backsound_music: string;
+
+    // Advanced Features
+    is_fitur_gallery?: boolean | string;
+    galleries?: { url: string; caption?: string }[];
+    is_fitur_cerita?: boolean | string;
+    love_stories?: { title: string; date: string; content: string }[];
+    is_fitur_live_streaming?: boolean | string;
+    link_live_streaming?: string;
+    platform_live_streaming?: string;
 }
 

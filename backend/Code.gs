@@ -133,7 +133,7 @@ function routeAction(action, payload, auth) {
       PermissionService.requireRole(auth, ['superadmin']);
       return TenantService.createTenant(auth, payload);
     case 'updateTenant':
-      PermissionService.requireRole(auth, ['superadmin']);
+      PermissionService.requireRole(auth, ['superadmin', 'tenant_admin']);
       return TenantService.updateTenant(auth, payload);
 
     // Wishes
@@ -158,6 +158,19 @@ function routeAction(action, payload, auth) {
     // Activity Logs
     case 'getActivityLogs':
       return ActivityLogService.getLogs(auth);
+
+    // Themes
+    case 'getThemes':
+      return ThemeService.getThemes(auth);
+    case 'createTheme':
+      PermissionService.requireRole(auth, ['superadmin']);
+      return ThemeService.createTheme(auth, payload);
+    case 'updateTheme':
+      PermissionService.requireRole(auth, ['superadmin']);
+      return ThemeService.updateTheme(auth, payload);
+    case 'deleteTheme':
+      PermissionService.requireRole(auth, ['superadmin']);
+      return ThemeService.deleteTheme(auth, payload);
 
     // Invitation Content
     case 'getInvitationContent':
@@ -698,18 +711,32 @@ var TenantService = {
   },
 
   updateTenant: function(auth, payload) {
-    PermissionService.requireRole(auth, ['superadmin']);
     Validator.required(payload, ['id']);
+    
+    // Check access
+    if (!PermissionService.canAccessTenant(auth, payload.id)) {
+      return ResponseHelper.error('Unauthorized to edit this tenant', 403);
+    }
 
     var updates = {};
-    if (payload.plan_type) {
-      updates.plan_type = payload.plan_type;
-      var planLimits = { free: 100, pro: 500, premium: -1 };
-      updates.guest_limit = planLimits[payload.plan_type] || 100;
+    
+    // Only superadmin can modify billing/plan details
+    if (auth.role === 'superadmin') {
+      if (payload.plan_type) {
+        updates.plan_type = payload.plan_type;
+        var planLimits = { free: 100, pro: 500, premium: -1 };
+        updates.guest_limit = planLimits[payload.plan_type] || 100;
+      }
+      if (payload.status_account) updates.status_account = payload.status_account;
+      if (payload.status_payment) updates.status_payment = payload.status_payment;
+      if (payload.guest_limit !== undefined) updates.guest_limit = payload.guest_limit;
     }
-    if (payload.status_account) updates.status_account = payload.status_account;
-    if (payload.status_payment) updates.status_payment = payload.status_payment;
-    if (payload.guest_limit !== undefined) updates.guest_limit = payload.guest_limit;
+
+    // Both Superadmin and TenantAdmin can update the theme and names
+    if (payload.theme_id !== undefined) updates.theme_id = payload.theme_id;
+    if (payload.bride_name !== undefined) updates.bride_name = payload.bride_name;
+    if (payload.groom_name !== undefined) updates.groom_name = payload.groom_name;
+    if (payload.wedding_date !== undefined) updates.wedding_date = payload.wedding_date;
 
     DB.update('Tenants', payload.id, updates);
 
@@ -1315,6 +1342,11 @@ var PublicService = {
 
     var content = DB.findOne('InvitationContent', 'tenant_id', tenant.id);
 
+    var theme = null;
+    if (tenant.theme_id) {
+      theme = DB.findOne('Themes', 'id', tenant.theme_id);
+    }
+
     var guest = null;
     if (payload.guestid) {
       var allGuests = DB.getByTenant('Guests', tenant.id);
@@ -1331,11 +1363,13 @@ var PublicService = {
         bride_name: tenant.bride_name,
         groom_name: tenant.groom_name,
         wedding_date: tenant.wedding_date,
-        domain_slug: tenant.domain_slug
+        domain_slug: tenant.domain_slug,
+        theme_id: tenant.theme_id
       },
       wishes: wishes.slice(0, 50),
       content: content || {},
-      guest: guest
+      guest: guest,
+      theme: theme
     }, 'Invitation data retrieved');
   },
 
@@ -1420,6 +1454,80 @@ var PublicService = {
 
 
 // =====================================================================
+// THEME SERVICE
+// =====================================================================
+
+var ThemeService = {
+  getThemes: function(auth) {
+    var themes = DB.getAll('Themes');
+    // Tenant only sees themes for their plan or lower
+    if (auth.role !== 'superadmin') {
+      var tenantId = PermissionService.getTenantId(auth);
+      var tenant = DB.findOne('Tenants', 'id', tenantId);
+      if (tenant) {
+        var priorities = { free: 1, pro: 2, premium: 3 };
+        var tenantPriority = priorities[tenant.plan_type] || 1;
+        themes = themes.filter(function(t) {
+          var themePriority = priorities[t.plan_type] || 1;
+          return themePriority <= tenantPriority;
+        });
+      }
+    }
+    return ResponseHelper.success(themes, 'Themes retrieved');
+  },
+
+  createTheme: function(auth, payload) {
+    Validator.required(payload, ['name', 'html_template', 'plan_type']);
+    var sanitized = Validator.sanitizeObject(payload);
+    
+    // We allow full HTML, so don't completely sanitize HTML template
+    var html_template = payload.html_template || '';
+    var css_template = payload.css_template || '';
+    var js_template = payload.js_template || '';
+
+    var theme = {
+      id: DB.generateId(),
+      name: sanitized.name,
+      html_template: html_template,
+      css_template: css_template,
+      js_template: js_template,
+      plan_type: sanitized.plan_type,
+      preview_image: sanitized.preview_image || '',
+      created_at: new Date().toISOString()
+    };
+
+    DB.insert('Themes', theme);
+    return ResponseHelper.success(theme, 'Theme created successfully');
+  },
+
+  updateTheme: function(auth, payload) {
+    Validator.required(payload, ['id']);
+    
+    var updates = {};
+    if (payload.name !== undefined) updates.name = Validator.sanitizeObject({n: payload.name}).n;
+    if (payload.html_template !== undefined) updates.html_template = payload.html_template;
+    if (payload.plan_type !== undefined) updates.plan_type = Validator.sanitizeObject({p: payload.plan_type}).p;
+    if (payload.preview_image !== undefined) updates.preview_image = Validator.sanitizeObject({i: payload.preview_image}).i;
+
+    var success = DB.update('Themes', payload.id, updates);
+    if (!success) {
+      return ResponseHelper.error('Theme not found', 404);
+    }
+    return ResponseHelper.success(null, 'Theme updated successfully');
+  },
+
+  deleteTheme: function(auth, payload) {
+    Validator.required(payload, ['id']);
+    var success = DB.deleteRow('Themes', payload.id);
+    if (!success) {
+      return ResponseHelper.error('Theme not found', 404);
+    }
+    return ResponseHelper.success(null, 'Theme deleted successfully');
+  }
+};
+
+
+// =====================================================================
 // SETUP FUNCTION - Run this once to initialize spreadsheet
 // =====================================================================
 
@@ -1427,7 +1535,8 @@ function setupSpreadsheet() {
   var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
 
   var sheets = {
-    'Tenants': ['id', 'bride_name', 'groom_name', 'wedding_date', 'domain_slug', 'plan_type', 'guest_limit', 'created_at', 'status_account', 'payment_deadline', 'status_payment'],
+    'Themes': ['id', 'name', 'html_template', 'css_template', 'js_template', 'plan_type', 'preview_image', 'created_at'],
+    'Tenants': ['id', 'bride_name', 'groom_name', 'wedding_date', 'domain_slug', 'plan_type', 'guest_limit', 'created_at', 'status_account', 'payment_deadline', 'status_payment', 'theme_id'],
     'Users': ['id', 'username', 'password_hash', 'role', 'tenant_id', 'created_at'],
     'Guests': ['id', 'tenant_id', 'name', 'phone', 'category', 'invitation_code', 'status', 'number_of_guests', 'checkin_status', 'created_at'],
     'Wishes': ['id', 'tenant_id', 'guest_name', 'message', 'created_at'],
@@ -1558,4 +1667,80 @@ function seedSampleData() {
   DB.insert('Gifts', { id: Utilities.getUuid(), tenant_id: tenantId, guest_name: 'Dewi Lestari', amount: 1000000, bank_name: 'Mandiri', created_at: now });
 
   Logger.log('Sample data seeded for tenant: ' + tenantId);
+}
+
+// =====================================================================
+// SEED THEMES
+// =====================================================================
+
+function seedThemes() {
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  if (!ss.getSheetByName('Themes')) {
+    setupSpreadsheet();
+    Logger.log('Created missing Themes sheet via setupSpreadsheet()');
+  }
+
+  var now = new Date().toISOString();
+
+  var theme1Str = '<div style="background-color: #1a1a2e; color: #f5f5f5; font-family: \'Playfair Display\', serif; text-align: center; padding: 60px 20px; line-height: 1.6;">' +
+                  '<h2 style="color: #d4af37; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 4px; margin-bottom: 20px;">The Wedding Celebration Of</h2>' +
+                  '<h1 style="color: #ffffff; font-size: 4rem; margin: 0; font-weight: normal; font-family: \'Great Vibes\', cursive;">{{groom_name}} & {{bride_name}}</h1>' +
+                  '<p style="font-size: 1.2rem; margin-top: 30px; letter-spacing: 2px;">{{wedding_date}}</p>' +
+                  '<div style="margin: 50px auto; width: 60px; height: 1px; background-color: #d4af37;"></div>' +
+                  '<p style="font-style: italic; max-w: 600px; margin: 0 auto;">"{{quote}}"</p>' +
+                  '<div style="margin-top: 60px; padding: 40px; border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 8px; max-width: 500px; margin-left: auto; margin-right: auto;">' +
+                  '<h3 style="color: #d4af37; font-size: 1.8rem; margin-bottom: 10px;">Akad Nikah</h3>' +
+                  '<p style="margin: 5px 0;">{{tanggal_akad}}</p>' +
+                  '<p style="margin: 5px 0;">{{jam_akad}}</p>' +
+                  '<p style="margin: 15px 0; font-weight: bold;">{{nama_lokasi_akad}}</p>' +
+                  '<p style="font-size: 0.9rem; opacity: 0.8;">{{keterangan_lokasi_akad}}</p>' +
+                  '</div>' +
+                  '<div style="margin-top: 40px; padding: 40px; border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 8px; max-width: 500px; margin-left: auto; margin-right: auto;">' +
+                  '<h3 style="color: #d4af37; font-size: 1.8rem; margin-bottom: 10px;">Resepsi</h3>' +
+                  '<p style="margin: 5px 0;">{{tanggal_resepsi}}</p>' +
+                  '<p style="margin: 5px 0;">{{jam_resepsi}}</p>' +
+                  '<p style="margin: 15px 0; font-weight: bold;">{{nama_lokasi_resepsi}}</p>' +
+                  '<p style="font-size: 0.9rem; opacity: 0.8;">{{keterangan_lokasi_resepsi}}</p>' +
+                  '</div>' +
+                  '</div>';
+
+  var theme2Str = '<div style="background-color: #faf9f5; color: #4a4a4a; font-family: \'Lora\', serif; text-align: center; padding: 80px 20px; position: relative;">' +
+                  '<div style="position: absolute; top: 0; left: 0; width: 100%; height: 20px; background: linear-gradient(90deg, #d4af37, #f3e5ab, #d4af37);"></div>' +
+                  '<h1 style="color: #2c3e50; font-size: 3.5rem; margin-bottom: 10px;">{{bride_name}} <span style="color: #d4af37;">&</span> {{groom_name}}</h1>' +
+                  '<p style="font-size: 1.1rem; letter-spacing: 3px; text-transform: uppercase; color: #7f8c8d; margin-bottom: 50px;">We Invite You To Celebrate With Us</p>' +
+                  '<div style="max-width: 600px; margin: 0 auto; background: white; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-radius: 12px;">' +
+                  '<p style="font-style: italic; line-height: 1.8; margin-bottom: 30px;">{{kalimat_pembuka}}</p>' +
+                  '<h2 style="font-size: 2rem; color: #d4af37; margin: 20px 0;">{{wedding_date}}</h2>' +
+                  '<div style="margin-top: 40px;">' +
+                  '<h3 style="font-size: 1.2rem; color: #2c3e50; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid #eee; padding-bottom: 10px; display: inline-block;">Venue</h3>' +
+                  '<p style="font-weight: bold; font-size: 1.2rem; margin-top: 20px;">{{nama_lokasi_resepsi}}</p>' +
+                  '<p style="color: #7f8c8d;">{{keterangan_lokasi_resepsi}}</p>' +
+                  '</div>' +
+                  '</div>' +
+                  '<div style="margin-top: 60px; max-width: 600px; margin-left: auto; margin-right: auto; padding: 30px; background: #fdfaf0; border: 1px dashed #d4af37;">' +
+                  '<h3 style="color: #d4af37;">Wedding Gift</h3>' +
+                  '<p style="margin-bottom: 20px;">Doa restu Anda merupakan karunia yang sangat berarti bagi kami. Namun jika Anda bermaksud memberikan tanda kasih, kami menyediakan fitur amplop digital berikut:</p>' +
+                  '<p><strong>{{bank_1}}</strong><br>{{rek_1}}<br>a.n {{nama_rek_1}}</p>' +
+                  '</div>' +
+                  '</div>';
+
+  DB.insert('Themes', {
+    id: DB.generateId(),
+    name: 'Platinum Leslie',
+    html_template: theme1Str,
+    plan_type: 'premium',
+    preview_image: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=400',
+    created_at: now
+  });
+
+  DB.insert('Themes', {
+    id: DB.generateId(),
+    name: 'Gold Ivy',
+    html_template: theme2Str,
+    plan_type: 'pro',
+    preview_image: 'https://images.unsplash.com/photo-1520854221256-17451cc331bf?auto=format&fit=crop&q=80&w=400',
+    created_at: now
+  });
+
+  Logger.log('Themes seeded successfully.');
 }
