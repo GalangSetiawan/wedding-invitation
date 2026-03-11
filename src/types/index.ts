@@ -282,7 +282,15 @@ export interface InvitationContent {
     flag_tampilkan_sosial_media_mempelai: boolean | string;
     account_media_sosial_laki_laki: string;
     account_media_sosial_perempuan: string;
-    flag_pakai_timeline_kisah: boolean | string;
+    is_fitur_tamu_spesial: string; // boolean string
+    
+    // Live Streaming
+    flag_pakai_live_streaming: string; // boolean string
+    link_live_streaming: string;
+    platform_live_streaming: string;
+
+    // Timeline
+    flag_pakai_timeline_kisah: string; // boolean string;
     timeline_kisah: string;
     tampilkan_amplop_online: boolean | string;
     nama_bank_1: string;
@@ -306,8 +314,5 @@ export interface InvitationContent {
     galleries?: { url: string; caption?: string }[];
     is_fitur_cerita?: boolean | string;
     love_stories?: { title: string; date: string; content: string }[];
-    is_fitur_live_streaming?: boolean | string;
-    link_live_streaming?: string;
-    platform_live_streaming?: string;
 }
 

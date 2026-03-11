@@ -687,6 +687,7 @@ var TenantService = {
       wedding_date: sanitized.wedding_date || '',
       domain_slug: sanitized.domain_slug || '',
       plan_type: plan,
+      theme_id: sanitized.theme_id || '',
       guest_limit: planLimits[plan] || 100,
       created_at: now,
       status_account: 'active',
@@ -721,19 +722,17 @@ var TenantService = {
     var updates = {};
     
     // Only superadmin can modify billing/plan details
-    if (auth.role === 'superadmin') {
-      if (payload.plan_type) {
-      // Enforce limits
-    var plan = sanitized.plan_type || 'basic';
-    var limits = { basic: 100, pro: 500, premium: 10000 };
-        updates.plan_type = payload.plan_type;
-        var planLimits = { basic: 100, pro: 500, premium: -1 }; // Re-define planLimits here for update context
-        updates.guest_limit = planLimits[payload.plan_type] || 100;
-      }
-      if (payload.status_account) updates.status_account = payload.status_account;
-      if (payload.status_payment) updates.status_payment = payload.status_payment;
-      if (payload.guest_limit !== undefined) updates.guest_limit = payload.guest_limit;
+  if (auth.role === 'superadmin') {
+    if (payload.plan_type) {
+      updates.plan_type = payload.plan_type;
+      var planLimits = { basic: 100, pro: 500, premium: -1 }; 
+      updates.guest_limit = planLimits[payload.plan_type] || 100;
     }
+    if (payload.status_account) updates.status_account = payload.status_account;
+    if (payload.status_payment) updates.status_payment = payload.status_payment;
+    if (payload.payment_deadline) updates.payment_deadline = payload.payment_deadline;
+    if (payload.guest_limit !== undefined) updates.guest_limit = payload.guest_limit;
+  }
 
     // Both Superadmin and TenantAdmin can update the theme and names
     if (payload.theme_id !== undefined) updates.theme_id = payload.theme_id;
@@ -904,7 +903,8 @@ var GuestService = {
             guestData = { 
                 name: parts[0], 
                 category: parts[1] || 'Tamu Undangan Umum',
-                phone: parts[2] || ''
+                phone: parts[2] || '',
+                pax: parts[3] ? parseInt(parts[3]) : 1
             };
         }
         
@@ -925,7 +925,7 @@ var GuestService = {
           category: Validator.sanitize(guestData.category || 'Tamu'),
           invitation_code: 'WED-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
           status: 'confirmed',
-          number_of_guests: 1,
+          number_of_guests: guestData.pax || 1,
           checkin_status: 'checked_in',
           created_at: new Date().toISOString()
         };
@@ -1558,7 +1558,8 @@ function setupSpreadsheet() {
       'custom_kalimat_1', 'custom_kalimat_2', 'custom_kalimat_3', 'custom_kalimat_4',
       'flag_pakai_kalimat_pembuka_custom', 'kalimat_pembuka_undangan',
       'flag_pakai_kalimat_penutup_custom', 'kalimat_penutup_undangan',
-      'link_backsound_music'
+      'link_backsound_music',
+      'flag_pakai_live_streaming', 'link_live_streaming', 'platform_live_streaming'
     ]
   };
 

@@ -9,7 +9,7 @@ interface ThemeGuideModalProps {
 }
 
 export function ThemeGuideModal({ isOpen, onClose, previewTenant }: ThemeGuideModalProps) {
-    const [activeTab, setActiveTab] = useState<'guide' | 'variables'>('guide');
+    const [activeTab, setActiveTab] = useState<'guide' | 'variables' | 'logic'>('guide');
 
     const t = previewTenant || {
         bride_name: 'Fiona',
@@ -97,6 +97,12 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant }: ThemeGuideMo
                 >
                     🏷️ Variabel Tema (Live)
                 </button>
+                <button
+                    className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'logic' ? 'border-gold-500 text-gold-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    onClick={() => setActiveTab('logic')}
+                >
+                    ⚙️ Panduan Logika & Looping
+                </button>
             </div>
 
             <div className="py-2 space-y-6 text-sm text-gray-700 dark:text-gray-300 h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
@@ -170,6 +176,65 @@ export function ThemeGuideModal({ isOpen, onClose, previewTenant }: ThemeGuideMo
                             </p>
                         </section>
                     </>
+                ) : activeTab === 'logic' ? (
+                    <div className="space-y-6">
+                        <section>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                                <span className="text-blue-500">⚙️</span> Handlebars / Templating Logic
+                            </h3>
+                            <p className="leading-relaxed">
+                                Sistem tema ini menggunakan sintaks ala <strong>Handlebars/Mustache</strong> untuk me-*render* logika kondisional dan *looping* array data. 
+                                Logika ini dieksekusi di *backend* sebelum HTML dikirim ke browser tamu.
+                            </p>
+                        </section>
+
+                        <hr className="border-gray-200 dark:border-gray-700" />
+
+                        <section className="space-y-4">
+                            <h4 className="text-md font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                <span className="text-green-500">1.</span> Kondisional (If / Else)
+                            </h4>
+                            <p className="text-sm">Gunakan blok <code>{`{{#if variabel}} ... {{/if}}`}</code> untuk merender suatu elemen HTML <strong>hanya jika</strong> variabel tersebut bernilai <code>true</code> (diaktifkan di panel Invitation Content).</p>
+                            
+                            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 font-mono text-xs overflow-x-auto text-gray-300">
+                                <span className="text-gray-500">{"<!-- Contoh: Menampilkan tombol Live Streaming jika dicentang -->"}</span><br />
+                                <span className="text-green-400">{"{{#if flag_pakai_live_streaming}}"}</span><br />
+                                &nbsp;&nbsp;{"<a href=\""}<span className="text-blue-400">{"{{link_live_streaming}}"}</span>{"\" class=\"btn btn-danger\">"}<br />
+                                &nbsp;&nbsp;&nbsp;&nbsp;{"Nonton Live di "}<span className="text-blue-400">{"{{platform_live_streaming}}"}</span><br />
+                                &nbsp;&nbsp;{"</a>"}<br />
+                                <span className="text-green-400">{"{{/if}}"}</span>
+                            </div>
+                            
+                            <p className="text-sm mt-2"><strong>Mekanisme Else:</strong> Anda juga bisa menggunakan <code>{`{{^if variabel}}`}</code> (If Not) atau `{"{{else}}"}` untuk logika kebalikan.</p>
+                        </section>
+
+                        <hr className="border-gray-200 dark:border-gray-700" />
+
+                        <section className="space-y-4">
+                            <h4 className="text-md font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                <span className="text-orange-500">2.</span> Looping Data Array (Each)
+                            </h4>
+                            <p className="text-sm">Gunakan blok <code>{`{{#each variabel_array}} ... {{/each}}`}</code> untuk mengulang elemen HTML sebanyak jumlah data riil (contoh: Galeri Foto, Cerita Cinta). Di dalam blok iterasi, gunakan <code>{`{{this.field}}`}</code> untuk mengakses isi datanya.</p>
+                            
+                            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 font-mono text-xs overflow-x-auto text-gray-300">
+                                <span className="text-gray-500">{"<!-- Contoh: Menampilkan Timeline Cerita Cinta -->"}</span><br />
+                                <span className="text-orange-400">{"{{#each timeline_kisah}}"}</span><br />
+                                &nbsp;&nbsp;{"<div class=\"timeline-item\">"}<br />
+                                &nbsp;&nbsp;&nbsp;&nbsp;{"<div class=\"date\">"}<span className="text-blue-400">{"{{this.tanggal}}"}</span>{"</div>"}<br />
+                                &nbsp;&nbsp;&nbsp;&nbsp;{"<h4>"}<span className="text-blue-400">{"{{this.judul}}"}</span>{"</h4>"}<br />
+                                &nbsp;&nbsp;&nbsp;&nbsp;{"<p>"}<span className="text-blue-400">{"{{this.deskripsi}}"}</span>{"</p>"}<br />
+                                &nbsp;&nbsp;{"</div>"}<br />
+                                <span className="text-orange-400">{"{{/each}}"}</span>
+                            </div>
+
+                            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 font-mono text-xs overflow-x-auto text-gray-300 mt-2">
+                                <span className="text-gray-500">{"<!-- Contoh 2: Menampilkan Gambar Galeri -->"}</span><br />
+                                <span className="text-orange-400">{"{{#each galleries}}"}</span><br />
+                                &nbsp;&nbsp;{"<img src=\""}<span className="text-blue-400">{"{{this.url}}"}</span>{"\" alt=\"Wedding Photo\">"}<br />
+                                <span className="text-orange-400">{"{{/each}}"}</span>
+                            </div>
+                        </section>
+                    </div>
                 ) : (
                     <section>
                         <p className="mb-4 text-gray-600 dark:text-gray-400">

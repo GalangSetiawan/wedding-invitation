@@ -15,7 +15,9 @@ import {
     HiOutlinePlus,
     HiOutlineTrash,
     HiOutlineColorSwatch,
-    HiOutlineExternalLink
+    HiOutlineExternalLink,
+    HiOutlineLink,
+    HiOutlineVideoCamera
 } from 'react-icons/hi';
 import type { TimelineItem } from '@/types';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -29,7 +31,7 @@ export function InvitationContentPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const { tenant } = useAuthStore();
-    const [activeTab, setActiveTab] = useState<'tema' | 'mempelai' | 'acara' | 'cerita' | 'hadiah'>('tema');
+    const [activeTab, setActiveTab] = useState<'tema' | 'mempelai' | 'acara' | 'cerita' | 'tambahan' | 'hadiah'>('tema');
     const [iframeKey, setIframeKey] = useState(0);
 
     // Map Picker State
@@ -121,7 +123,11 @@ export function InvitationContentPage() {
             flag_tampilkan_sosial_media_mempelai: false,
             account_media_sosial_laki_laki: '',
             account_media_sosial_perempuan: '',
-            flag_pakai_timeline_kisah: false,
+            is_fitur_tamu_spesial: 'false',
+            flag_pakai_live_streaming: 'false',
+            link_live_streaming: '',
+            platform_live_streaming: '',
+            flag_pakai_timeline_kisah: 'false',
             timeline_kisah: '',
             tampilkan_amplop_online: true,
             nama_bank_1: '',
@@ -267,6 +273,7 @@ export function InvitationContentPage() {
         { id: 'mempelai', label: 'Mempelai & Keluarga', icon: HiOutlineUserGroup },
         { id: 'acara', label: 'Teks & Acara', icon: HiOutlineMap },
         { id: 'cerita', label: 'Cerita Cinta', icon: HiOutlineHeart },
+        { id: 'tambahan', label: 'Fitur Tambahan', icon: HiOutlineVideoCamera },
         { id: 'hadiah', label: 'Amplop Digital', icon: HiOutlineCreditCard },
     ];
 
@@ -727,97 +734,149 @@ export function InvitationContentPage() {
                                 </div>
                             </>
                         )}
-
-                        {/* TAB 3: CERITA CINTA (Love Story) */}
+                        {/* TAB 3: FITUR TAMBAHAN (Love Story & Streaming) */}
                         {activeTab === 'cerita' && (
-                            <div className="card space-y-4 shadow-sm border border-gray-100 dark:border-gray-800">
-                                <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
-                                    <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-500">
-                                        <HiOutlineHeart className="w-5 h-5" />
+                            <>
+                                <div className="card space-y-4 shadow-sm border border-gray-100 dark:border-gray-800">
+                                    <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
+                                        <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-500">
+                                            <HiOutlineHeart className="w-5 h-5" />
+                                        </div>
+                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Love Story Timeline</h2>
                                     </div>
-                                    <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Love Story Timeline</h2>
-                                </div>
 
-                                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-gray-100 dark:border-gray-800">
-                                    <input
-                                        type="checkbox"
-                                        className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700"
-                                        checked={getBool(content.flag_pakai_timeline_kisah)}
-                                        onChange={(e) => updateField('flag_pakai_timeline_kisah', e.target.checked)}
-                                    />
-                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Include your love story timeline</span>
-                                </label>
+                                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-gray-100 dark:border-gray-800">
+                                        <input
+                                            type="checkbox"
+                                            className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700"
+                                            checked={getBool(content.flag_pakai_timeline_kisah)}
+                                            onChange={(e) => updateField('flag_pakai_timeline_kisah', e.target.checked)}
+                                        />
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Include your love story timeline</span>
+                                    </label>
 
-                                {getBool(content.flag_pakai_timeline_kisah) && (
-                                    <div className="pt-4 space-y-4 animate-fade-in border-t border-gray-100 dark:border-gray-800">
-                                        {timelineItems.map((item, idx) => (
-                                            <div key={idx} className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 relative group space-y-3">
-                                                <button
-                                                    onClick={() => setTimelineItems(prev => prev.filter((_, i) => i !== idx))}
-                                                    className="absolute top-3 right-3 text-gray-400 hover:text-red-500 bg-white dark:bg-gray-900 rounded p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    title="Remove story"
-                                                >
-                                                    <HiOutlineTrash className="w-4 h-4" />
-                                                </button>
+                                    {getBool(content.flag_pakai_timeline_kisah) && (
+                                        <div className="pt-4 space-y-4 animate-fade-in border-t border-gray-100 dark:border-gray-800">
+                                            {timelineItems.map((item, idx) => (
+                                                <div key={idx} className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 relative group space-y-3">
+                                                    <button
+                                                        onClick={() => setTimelineItems(prev => prev.filter((_, i) => i !== idx))}
+                                                        className="absolute top-3 right-3 text-gray-400 hover:text-red-500 bg-white dark:bg-gray-900 rounded p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        title="Remove story"
+                                                    >
+                                                        <HiOutlineTrash className="w-4 h-4" />
+                                                    </button>
 
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="label-field text-xs">Date (e.g. 2020-01-12)</label>
-                                                        <input
-                                                            type="date"
-                                                            value={item.tanggal}
-                                                            onChange={(e) => {
-                                                                const newArr = [...timelineItems];
-                                                                newArr[idx].tanggal = e.target.value;
-                                                                setTimelineItems(newArr);
-                                                            }}
-                                                            className="input-field text-sm"
-                                                        />
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div>
+                                                            <label className="label-field text-xs">Date (e.g. 2020-01-12)</label>
+                                                            <input
+                                                                type="date"
+                                                                value={item.tanggal}
+                                                                onChange={(e) => {
+                                                                    const newArr = [...timelineItems];
+                                                                    newArr[idx].tanggal = e.target.value;
+                                                                    setTimelineItems(newArr);
+                                                                }}
+                                                                className="input-field text-sm"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="label-field text-xs">Title</label>
+                                                            <input
+                                                                type="text"
+                                                                value={item.judul}
+                                                                onChange={(e) => {
+                                                                    const newArr = [...timelineItems];
+                                                                    newArr[idx].judul = e.target.value;
+                                                                    setTimelineItems(newArr);
+                                                                }}
+                                                                className="input-field text-sm"
+                                                                placeholder="First Meet"
+                                                            />
+                                                        </div>
                                                     </div>
                                                     <div>
-                                                        <label className="label-field text-xs">Title</label>
-                                                        <input
-                                                            type="text"
-                                                            value={item.judul}
+                                                        <label className="label-field text-xs">Description</label>
+                                                        <textarea
+                                                            value={item.deskripsi}
                                                             onChange={(e) => {
                                                                 const newArr = [...timelineItems];
-                                                                newArr[idx].judul = e.target.value;
+                                                                newArr[idx].deskripsi = e.target.value;
                                                                 setTimelineItems(newArr);
                                                             }}
-                                                            className="input-field text-sm"
-                                                            placeholder="First Meet"
+                                                            className="input-field min-h-[60px] text-sm"
+                                                            placeholder="We first met at..."
                                                         />
                                                     </div>
                                                 </div>
+                                            ))}
+
+                                            <button
+                                                onClick={() => setTimelineItems(prev => [...prev, { tanggal: '', judul: '', deskripsi: '' }])}
+                                                className="w-full py-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-500 hover:text-gold-500 hover:border-gold-300 dark:hover:border-gold-700 hover:bg-gold-50 dark:hover:bg-gold-900/10 transition-colors flex items-center justify-center gap-2"
+                                            >
+                                                <HiOutlinePlus className="w-4 h-4" />
+                                                Add Story Event
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )}
+                        
+                        {/* TAB 4: FITUR TAMBAHAN (Live Streaming & Special Features) */}
+                        {activeTab === 'tambahan' && (
+                            <>
+                                <div className="card space-y-4 shadow-sm border border-gray-100 dark:border-gray-800">
+                                    <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">
+                                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-500">
+                                            <HiOutlineVideoCamera className="w-5 h-5" />
+                                        </div>
+                                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Live Streaming</h2>
+                                    </div>
+
+                                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-gray-100 dark:border-gray-800">
+                                        <input
+                                            type="checkbox"
+                                            className="w-5 h-5 rounded text-gold-500 focus:ring-gold-500 dark:bg-gray-900 dark:border-gray-700"
+                                            checked={getBool(content.flag_pakai_live_streaming)}
+                                            onChange={(e) => updateField('flag_pakai_live_streaming', e.target.checked)}
+                                        />
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Aktifkan Live Streaming</span>
+                                    </label>
+
+                                    {getBool(content.flag_pakai_live_streaming) && (
+                                        <div className="pt-2" animate-fade-in>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div>
-                                                    <label className="label-field text-xs">Description</label>
-                                                    <textarea
-                                                        value={item.deskripsi}
-                                                        onChange={(e) => {
-                                                            const newArr = [...timelineItems];
-                                                            newArr[idx].deskripsi = e.target.value;
-                                                            setTimelineItems(newArr);
-                                                        }}
-                                                        className="input-field min-h-[60px] text-sm"
-                                                        placeholder="We first met at..."
+                                                    <label className="label-field text-xs">Platform (e.g. YouTube, Zoom)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={content.platform_live_streaming || ''}
+                                                        onChange={(e) => updateField('platform_live_streaming', e.target.value)}
+                                                        className="input-field text-sm"
+                                                        placeholder="YouTube"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="label-field text-xs">Link Live Streaming / Meeting URL</label>
+                                                    <input
+                                                        type="url"
+                                                        value={content.link_live_streaming || ''}
+                                                        onChange={(e) => updateField('link_live_streaming', e.target.value)}
+                                                        className="input-field text-sm"
+                                                        placeholder="https://..."
                                                     />
                                                 </div>
                                             </div>
-                                        ))}
-
-                                        <button
-                                            onClick={() => setTimelineItems(prev => [...prev, { tanggal: '', judul: '', deskripsi: '' }])}
-                                            className="w-full py-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-500 hover:text-gold-500 hover:border-gold-300 dark:hover:border-gold-700 hover:bg-gold-50 dark:hover:bg-gold-900/10 transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            <HiOutlinePlus className="w-4 h-4" />
-                                            Add Story Event
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
                         )}
 
-                        {/* TAB 4: HADIAH & AMPLOP DIGITAL */}
+                        {/* TAB 5: AMPLOP DIGITAL */}
                         {activeTab === 'hadiah' && (
                             <div className="card space-y-4 shadow-sm border border-gray-100 dark:border-gray-800 md:col-span-2">
                                 <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-800">

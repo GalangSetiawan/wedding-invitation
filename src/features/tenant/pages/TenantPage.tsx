@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { tenantApi } from '@/core/api/endpoints';
+import { tenantApi, themeApi } from '@/core/api/endpoints';
 import { DataTable, Column } from '@/shared/components/DataTable';
 import { Modal } from '@/shared/components/Modal';
 import { PageLoader } from '@/shared/components/Loading';
-import type { Tenant, CreateTenantRequest, PlanType, TenantStatus } from '@/types';
+import type { Tenant, CreateTenantRequest, PlanType, TenantStatus, Theme } from '@/types';
 import toast from 'react-hot-toast';
 import {
     HiOutlinePlus,
@@ -15,13 +15,14 @@ import {
 
 export function TenantPage() {
     const [tenants, setTenants] = useState<Tenant[]>([]);
+    const [themes, setThemes] = useState<Theme[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
     const [editForm, setEditForm] = useState<Partial<Tenant>>({});
 
-    const [form, setForm] = useState<CreateTenantRequest>({
+    const [form, setForm] = useState<CreateTenantRequest & { theme_id?: string }>({
         bride_name: '',
         groom_name: '',
         wedding_date: '',
@@ -29,21 +30,51 @@ export function TenantPage() {
         plan_type: 'basic',
         admin_username: '',
         admin_password: '',
+        theme_id: '',
     });
+
+    // Placeholder for auth context/hook. In a real app, this would come from a context or hook.
+    // Assuming a simple structure for demonstration based on the instruction's usage.
+    const auth = {
+        role: 'admin' // or 'superadmin'
+    };
 
     useEffect(() => {
         fetchTenants();
-    }, []);
+    }, [auth.role]);
+
+    // Priority map for plan types
+    const planPriority: Record<string, number> = {
+        'basic': 1,
+        'pro': 2,
+        'premium': 3
+    };
 
     const fetchTenants = async () => {
         try {
-            const response = await tenantApi.getTenants();
-            if (response.success) {
-                setTenants(response.data);
+            const [localTenantsRes, globalTenantsRes, themesRes] = await Promise.all([
+                tenantApi.getTenants(),
+                auth.role === 'superadmin' ? tenantApi.getTenants() : Promise.resolve({ success: false, data: [] }),
+                themeApi.getThemes()
+            ]);
+
+            let finalTenants: Tenant[] = [];
+            if (auth.role === 'superadmin' && globalTenantsRes.success) {
+                finalTenants = globalTenantsRes.data || [];
+            } else if (localTenantsRes.success) {
+                finalTenants = localTenantsRes.data || [];
             }
-        } catch {
-            toast.error('Failed to load tenants');
+
+            // In local usage, DB sometimes returns non-arrays
+            setTenants(Array.isArray(finalTenants) ? finalTenants : []);
+
+            if (themesRes.success && Array.isArray(themesRes.data)) {
+                setThemes(themesRes.data);
+            }
+        } catch (error) {
+            toast.error('Failed to load tenants or themes');
             setTenants([]);
+            setThemes([]);
         } finally {
             setLoading(false);
         }
@@ -114,7 +145,7 @@ export function TenantPage() {
 
     const planBadge = (plan: PlanType) => {
         const classes: Record<string, string> = {
-            free: 'badge-info',
+            basic: 'badge-info',
             pro: 'badge-warning',
             premium: 'badge-gold',
         };
@@ -135,17 +166,25 @@ export function TenantPage() {
         {
             key: 'wedding_date',
             header: 'Date',
-            render: (t: Tenant) => new Date(t.wedding_date).toLocaleDateString('id-ID'),
+            render: (t: Tenant) => <p>{new Date(t.wedding_date).toLocaleDateString('id-ID')}</p>,
         },
         {
             key: 'plan_type',
             header: 'Plan',
-            render: (t: Tenant) => planBadge(t.plan_type),
+            render: (t: Tenant) => <>{planBadge(t.plan_type)}</>,
+        },
+        {
+            key: 'theme_id',
+            header: 'Theme',
+            render: (t: Tenant) => {
+                const theme = themes.find(th => th.id === t.theme_id);
+                return <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{theme ? theme.name : '-'}</span>;
+            },
         },
         {
             key: 'guest_limit',
             header: 'Guest Limit',
-            render: (t: Tenant) => <span>{t.guest_limit === -1 ? '∞ Unlimited' : t.guest_limit}</span>,
+            render: (t: Tenant) => <p>{t.guest_limit === -1 ? '∞ Unlimited' : t.guest_limit}</p>,
         },
         {
             key: 'payment',
@@ -253,6 +292,23 @@ export function TenantPage() {
                             <option value="premium">Premium</option>
                         </select>
                     </div>
+                    <div>
+                        <label className="label-field">Subscribed Theme</label>
+                        <select 
+                            value={form.theme_id || ''} 
+                            onChange={(e) => setForm((f) => ({ ...f, theme_id: e.target.value }))} 
+                            className="select-field"
+                        >
+                            <option value="">-- No Theme Selected --</option>
+                            {themes
+                                .filter(t => planPriority[t.plan_type] <= planPriority[form.plan_type])
+                                .map(t => (
+                                    <option key={t.id} value={t.id}>{t.name} (Plan: {t.plan_type})</option>
+                                ))
+                            }
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">Themes are filtered based on the selected Plan Type.</p>
+                    </div>
                     <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
                         <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-3">Admin Account</p>
                     </div>
@@ -306,6 +362,8 @@ export function TenantPage() {
                             </div>
                         </div>
 
+                        
+
                         <div className="grid grid-cols-2 gap-4">
                             <div className="card bg-gray-50 dark:bg-gray-800 p-4">
                                 <div className="flex flex-col gap-2">
@@ -336,26 +394,49 @@ export function TenantPage() {
                             </div>
                         </div>
 
+                        <div>
+                            <label className="label-field text-xs text-gray-500 mb-1 block">Assigned Theme</label>
+                            <select 
+                                value={editForm.theme_id || ''} 
+                                onChange={(e) => setEditForm(prev => ({ ...prev, theme_id: e.target.value }))} 
+                                className="select-field text-sm"
+                            >
+                                <option value="">-- No Theme Selected --</option>
+                                {themes
+                                    .filter(t => planPriority[t.plan_type] <= planPriority[editForm.plan_type || 'basic'])
+                                    .map(t => (
+                                        <option key={t.id} value={t.id}>{t.name} (Plan: {t.plan_type})</option>
+                                    ))
+                                }
+                            </select>
+                        </div>
+
                         <div className="card bg-gray-50 dark:bg-gray-800 p-4">
                             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Payment Status</p>
-                            <div className="flex items-center gap-4">
-                                <select
-                                    value={editForm.status_payment}
-                                    onChange={(e) => setEditForm(prev => ({ ...prev, status_payment: e.target.value as 'Menunggu pembayaran' | 'Sudah dibayar' }))}
-                                    className="select-field text-sm w-1/2"
-                                >
-                                    <option value="Menunggu pembayaran">Menunggu pembayaran</option>
-                                    <option value="Sudah dibayar">Sudah dibayar</option>
-                                </select>
-                                <div className="w-1/2">
-                                    <p className="text-xs text-gray-500 mb-1">Deadline Date</p>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <p className="label-field text-xs text-gray-500 mb-1 block">Status</p>
+                                    <select
+                                        value={editForm.status_payment}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, status_payment: e.target.value as 'Menunggu pembayaran' | 'Sudah dibayar' }))}
+                                        className="select-field text-sm w-full"
+                                    >
+                                        <option value="Menunggu pembayaran">Menunggu pembayaran</option>
+                                        <option value="Sudah dibayar">Sudah dibayar</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <p className="label-field text-xs text-gray-500 mb-1 block">Deadline Date</p>
                                     <input
                                         type="date"
                                         value={editForm.payment_deadline ? new Date(editForm.payment_deadline).toISOString().split('T')[0] : ''}
                                         onChange={(e) => setEditForm(prev => ({ ...prev, payment_deadline: e.target.value }))}
-                                        className="input-field text-sm"
+                                        className="input-field text-sm w-full"
                                     />
                                 </div>
+
                             </div>
                         </div>
                     </div>

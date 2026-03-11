@@ -457,7 +457,7 @@ export function InvitationPage({ previewData }: InvitationPageProps) {
             // Advanced features 
             has_gallery: getBool(activeContent.is_fitur_gallery),
             has_story: getBool(activeContent.is_fitur_cerita),
-            live_streaming: getBool(activeContent.is_fitur_live_streaming) ? {
+            live_streaming: getBool(activeContent.flag_pakai_live_streaming) ? {
                 url: activeContent.link_live_streaming || '',
                 platform: activeContent.platform_live_streaming || 'YouTube'
             } : null,

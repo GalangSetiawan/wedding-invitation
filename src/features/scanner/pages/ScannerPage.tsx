@@ -17,6 +17,7 @@ interface ManualGuest {
     name: string;
     category: string;
     phone: string;
+    pax: number;
     status: 'draft' | 'saving' | 'saved';
     created_at: number;
 }
@@ -216,6 +217,7 @@ export function ScannerPage() {
             name: '',
             category: 'Tamu Undangan Umum',
             phone: '',
+            pax: 1,
             status: 'draft',
             created_at: Date.now()
         };
@@ -223,7 +225,7 @@ export function ScannerPage() {
         setManualGuests([newRow, ...manualGuests]);
     };
 
-    const handleUpdateRow = (id: string, field: keyof ManualGuest, value: string) => {
+    const handleUpdateRow = (id: string, field: keyof ManualGuest, value: any) => {
         setManualGuests(prev => prev.map(g => g.id === id ? { ...g, [field]: value } : g));
     };
 
@@ -252,7 +254,7 @@ export function ScannerPage() {
         for (const guest of drafts) {
             try {
                 // Send shorthand dynamic payload (simulating scanner behavior for uninvited checkin)
-                const payload = `NEW_GUEST:${guest.name.trim()}:${guest.category.trim()}:${guest.phone.trim()}`;
+                const payload = `NEW_GUEST:${guest.name.trim()}:${guest.category.trim()}:${guest.phone.trim()}:${guest.pax}`;
                 const res = await guestApi.checkinGuest(payload);
 
                 if (res.success) {
@@ -299,7 +301,7 @@ export function ScannerPage() {
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 items-start">
                 {/* Left Column: Scanner */}
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                     <div className="p-6 text-center space-y-6">
@@ -405,9 +407,7 @@ export function ScannerPage() {
                     </div>
                 </div>
 
-                <div className="text-center text-sm text-gray-500 dark:text-gray-400 mb-2">
-                    <p>Tips: Anda juga bisa Paste (Ctrl+V) tangkapan layar berisi QR code tamu secara langsung di layar ini.</p>
-                </div>
+                
             </div>
 
             {/* Right Column: Manual Input Table */}
@@ -444,6 +444,7 @@ export function ScannerPage() {
                                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama (Wajib)</th>
                                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kategori</th>
                                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">No. Telp</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Jumlah Tamu</th>
                                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10 text-center">Aksi</th>
                             </tr>
                         </thead>
@@ -495,6 +496,25 @@ export function ScannerPage() {
                                                 placeholder="Opsional"
                                                 className="w-full min-w-[100px] px-2 py-1 text-sm bg-transparent border-b border-gray-200 dark:border-gray-600 focus:border-gold-500 focus:ring-0 disabled:opacity-75 disabled:border-transparent"
                                             />
+                                        </td>
+                                        <td className="px-4 py-2">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={() => handleUpdateRow(guest.id, 'pax', Math.max(1, guest.pax - 1))}
+                                                    disabled={guest.status === 'saved' || guest.status === 'saving' || guest.pax <= 1}
+                                                    className="p-1 rounded bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 text-gray-600 dark:text-gray-300 transition-colors"
+                                                >
+                                                    -
+                                                </button>
+                                                <span className="text-sm font-semibold w-6 text-center">{guest.pax}</span>
+                                                <button
+                                                    onClick={() => handleUpdateRow(guest.id, 'pax', guest.pax + 1)}
+                                                    disabled={guest.status === 'saved' || guest.status === 'saving'}
+                                                    className="p-1 rounded bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 text-gray-600 dark:text-gray-300 transition-colors"
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
                                         </td>
                                         <td className="px-4 py-2 text-center">
                                             {guest.status !== 'saved' && (
